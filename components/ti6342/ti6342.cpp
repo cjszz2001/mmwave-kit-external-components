@@ -19,14 +19,14 @@ static const char *const TAG = "ti6342";
 void TI6342Component::dump_config() {
   ESP_LOGCONFIG(TAG, "TI6342:");
 #ifdef USE_TEXT_SENSOR
-  LOG_TEXT_SENSOR(" ", "Heartbeat Text Sensor", this->heartbeat_state_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Product Model Text Sensor", this->product_model_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Product ID Text Sensor", this->product_id_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Hardware Model Text Sensor", this->hardware_model_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Firware Verison Text Sensor", this->firware_version_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Keep Away Text Sensor", this->keep_away_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Heartbeat Text Sensor", this->heartbeat_state_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Product Model Text Sensor", this->product_model_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Product ID Text Sensor", this->product_id_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Hardware Model Text Sensor", this->hardware_model_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Firware Verison Text Sensor", this->firware_version_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Keep Away Text Sensor", this->keep_away_text_sensor_);
   LOG_TEXT_SENSOR(" ", "Motion Status Text Sensor", this->motion_status_text_sensor_);
-  LOG_TEXT_SENSOR(" ", "Custom Mode End Text Sensor", this->custom_mode_end_text_sensor_);
+//   LOG_TEXT_SENSOR(" ", "Custom Mode End Text Sensor", this->custom_mode_end_text_sensor_);
 #endif
 #ifdef USE_BINARY_SENSOR
   LOG_BINARY_SENSOR(" ", "Has Target Binary Sensor", this->has_target_binary_sensor_);
@@ -66,10 +66,10 @@ void TI6342Component::dump_config() {
 
 // Initialisation functions
 void TI6342Component::setup() {
-  //ESP_LOGCONFIG(TAG, "uart_settings is 115200");
-  //this->check_uart_settings(115200);
-  ESP_LOGCONFIG(TAG, "uart_settings is 1250000");
-  this->check_uart_settings(1250000);
+  ESP_LOGCONFIG(TAG, "uart_settings is 115200");
+  this->check_uart_settings(115200);
+//   ESP_LOGCONFIG(TAG, "uart_settings is 1250000");
+//   this->check_uart_settings(1250000);
 
   if (this->custom_mode_number_ != nullptr) {
     this->custom_mode_number_->publish_state(0);  // Zero out the custom mode
@@ -77,9 +77,9 @@ void TI6342Component::setup() {
   if (this->custom_mode_num_sensor_ != nullptr) {
     this->custom_mode_num_sensor_->publish_state(0);
   }
-  if (this->custom_mode_end_text_sensor_ != nullptr) {
-    this->custom_mode_end_text_sensor_->publish_state("Not in custom mode");
-  }
+//   if (this->custom_mode_end_text_sensor_ != nullptr) {
+//     this->custom_mode_end_text_sensor_->publish_state("Not in custom mode");
+//   }
   this->set_custom_end_mode();
   this->poll_time_base_func_check_ = true;
   this->check_dev_inf_sign_ = true;
@@ -214,6 +214,8 @@ void TI6342Component::loop() {
       this->targets.clear();
       this->indexes.clear();
       this->class_outcome.clear();
+
+      // break; // break from while, to avoid blocking other tasks.
     }
   } //end of while
 }
@@ -289,6 +291,7 @@ void TI6342Component::handle_ext_msg_enhanced_presence_indication(uint8_t *data,
       uint8_t value = pDetection[idx] >> ((i*2) % 8) & 3;
       this->zone_presence.push_back(value); 
       ESP_LOGD(TAG, "TLV presence indication: zone=%d, value=%d", i, value);
+      this->motion_status_text_sensor_->publish_state(S_MOTION_STATUS_STR[value]);
    }
 }
 
@@ -366,7 +369,7 @@ void TI6342Component::handle_ext_msg_range_profile_minor(uint8_t *data, uint32_t
 }
 void TI6342Component::handle_msg_ext_stats(uint8_t *data, uint32_t length)
 {
-   
+
 }
 
 // Calculate CRC check digit
@@ -386,7 +389,10 @@ static int get_frame_check_status(uint8_t *data, int len) {
 }
 
 // Sending data frames
-void TI6342Component::send_query_(uint8_t *query, size_t string_length) { this->write_array(query, string_length); }
+void TI6342Component::send_query_(uint8_t *query, size_t string_length) 
+{ 
+//   this->write_array(query, string_length); 
+}
 
 // Send Heartbeat Packet Command
 void TI6342Component::get_heartbeat_packet() {

@@ -91,7 +91,7 @@ enum {
 
 static const char *const S_SCENE_STR[5] = {"None", "Living Room", "Bedroom", "Washroom", "Area Detection"};
 static const bool S_SOMEONE_EXISTS_STR[2] = {false, true};
-static const char *const S_MOTION_STATUS_STR[3] = {"None", "Motionless", "Active"};
+static const char *const S_MOTION_STATUS_STR[] = {"None", "Minor", "Major", "Major and Minor"};
 static const char *const S_KEEP_AWAY_STR[3] = {"None", "Close", "Away"};
 static const char *const S_UNMANNED_TIME_STR[9] = {"None", "10s",   "30s",   "1min", "2min",
                                                    "5min", "10min", "30min", "60min"};
@@ -102,14 +102,14 @@ static const float S_PRESENCE_OF_DETECTION_RANGE_STR[7] = {0, 0.5, 1.0, 1.5, 2.0
 class TI6342Component : public Component,
                           public uart::UARTDevice {  // The class name must be the name defined by text_sensor.py
 #ifdef USE_TEXT_SENSOR
-  SUB_TEXT_SENSOR(heartbeat_state)
-  SUB_TEXT_SENSOR(product_model)
-  SUB_TEXT_SENSOR(product_id)
-  SUB_TEXT_SENSOR(hardware_model)
-  SUB_TEXT_SENSOR(firware_version)
-  SUB_TEXT_SENSOR(keep_away)
+//   SUB_TEXT_SENSOR(heartbeat_state)
+//   SUB_TEXT_SENSOR(product_model)
+//   SUB_TEXT_SENSOR(product_id)
+//   SUB_TEXT_SENSOR(hardware_model)
+//   SUB_TEXT_SENSOR(firware_version)
+//   SUB_TEXT_SENSOR(keep_away)
   SUB_TEXT_SENSOR(motion_status)
-  SUB_TEXT_SENSOR(custom_mode_end)
+//   SUB_TEXT_SENSOR(custom_mode_end)
 #endif
 #ifdef USE_BINARY_SENSOR
   SUB_BINARY_SENSOR(has_target)
