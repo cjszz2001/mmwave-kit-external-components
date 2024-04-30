@@ -292,6 +292,7 @@ void TI6342Component::handle_ext_msg_enhanced_presence_indication(uint8_t *data,
       this->zone_presence.push_back(value); 
       ESP_LOGD(TAG, "TLV presence indication: zone=%d, value=%d", i, value);
       this->motion_status_text_sensor_->publish_state(S_MOTION_STATUS_STR[value]);
+      this->custom_presence_of_detection_sensor_->publish_state(value);
    }
 }
 
