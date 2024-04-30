@@ -1,0 +1,129 @@
+esphome:
+  name: local-component
+  friendly_name: local component
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+external_components:
+  # use all components from a local folder
+  - source:
+      type: local
+      path: my_components
+
+# Enable Home Assistant API
+api:
+
+
+ota:
+
+
+wifi:
+  networks:
+   - ssid: !secret wifi_ssid
+     password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Local-Component Fallback Hotspot"
+
+captive_portal:
+    
+uart:
+  id: uart_bus
+  #baud_rate: 115200
+  baud_rate: 1250000
+  rx_pin: 4
+  tx_pin: 5
+  parity: NONE
+  stop_bits: 1
+
+ti6342:
+#seeed_mr24hpc1:
+  id: my_ti6342
+
+text_sensor:
+  - platform: ti6342
+    heart_beat:
+      name: "Heartbeat"
+    product_model:
+      name: "Product Model"
+    product_id:
+      name: "Product ID"
+    hardware_model:
+      name: "Hardware Model"
+    hardware_version:
+      name: "Hardware Version"
+    keep_away:
+      name: "Active Reporting Of Proximity"
+    motion_status:
+      name: "Motion Information"
+    custom_mode_end:
+      name: "Custom Mode Status"
+
+binary_sensor:
+  - platform: ti6342
+    has_target:
+      name: "Presence Information"
+
+sensor:
+  - platform: ti6342
+    custom_presence_of_detection:
+      name: "Static Distance"
+    movement_signs:
+      name: "Body Movement Parameter"
+    custom_motion_distance:
+      name: "Motion Distance"
+    custom_spatial_static_value:
+      name: "Existence Energy"
+    custom_spatial_motion_value:
+      name: "Motion Energy"
+    custom_motion_speed:
+      name: "Motion Speed"
+    custom_mode_num:
+      name: "Current Custom Mode"
+
+switch:
+  - platform: ti6342
+    underly_open_function:
+      name: Underlying Open Function Info Output Switch
+
+button:
+  - platform: ti6342
+    restart:
+      name: "Module Restart"
+    custom_set_end:
+      name: "End Of Custom Mode Settings"
+
+select:
+  - platform: ti6342
+    scene_mode:
+      name: "Scene"
+    unman_time:
+      name: "Time For Entering No Person State (Standard Function)"
+    existence_boundary:
+      name: "Existence Boundary"
+    motion_boundary:
+      name: "Motion Boundary"
+
+number:
+  - platform: ti6342
+    sensitivity:
+      name: "Sensitivity"
+    custom_mode:
+      name: "Custom Mode"
+    existence_threshold:
+      name: "Existence Energy Threshold"
+    motion_threshold:
+      name: "Motion Energy Threshold"
+    motion_trigger:
+      name: "Motion Trigger Time"
+    motion_to_rest:
+      name: "Motion To Rest Time"
+    custom_unman_time:
+      name: "Time For Entering No Person State (Underlying Open Function)"
