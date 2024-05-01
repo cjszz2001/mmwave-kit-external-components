@@ -32,8 +32,11 @@ void TI6342Component::dump_config() {
   LOG_BINARY_SENSOR(" ", "Has Target Binary Sensor", this->has_target_binary_sensor_);
 #endif
 #ifdef USE_SENSOR
+//zone 1
   LOG_SENSOR(" ", "Custom Presence Of Detection Sensor", this->custom_presence_of_detection_sensor_);
+//zone 2
   LOG_SENSOR(" ", "Movement Signs Sensor", this->movement_signs_sensor_);
+//zone 3  
   LOG_SENSOR(" ", "Custom Motion Distance Sensor", this->custom_motion_distance_sensor_);
   LOG_SENSOR(" ", "Custom Spatial Static Sensor", this->custom_spatial_static_value_sensor_);
   LOG_SENSOR(" ", "Custom Spatial Motion Sensor", this->custom_spatial_motion_value_sensor_);
@@ -292,7 +295,19 @@ void TI6342Component::handle_ext_msg_enhanced_presence_indication(uint8_t *data,
       this->zone_presence.push_back(value); 
       ESP_LOGD(TAG, "TLV presence indication: zone=%d, value=%d", i, value);
       this->motion_status_text_sensor_->publish_state(S_MOTION_STATUS_STR[value]);
-      this->custom_presence_of_detection_sensor_->publish_state(value);
+      if (i == 0)
+      {
+         this->custom_presence_of_detection_sensor_->publish_state(value);
+      }
+      else if (i == 1)
+      {
+         this->movement_signs_sensor_->publish_state(value);
+      }
+      else if (i ==2)
+      {
+      this->custom_motion_distance_sensor_->publish_state(value);
+      }
+      
    }
 }
 
