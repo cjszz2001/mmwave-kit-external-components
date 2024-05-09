@@ -48,12 +48,12 @@ uart:
   parity: NONE
   stop_bits: 1
 
-ti6342:
+ti6432:
 #seeed_mr24hpc1:
-  id: my_ti6342
+  id: my_ti6432
 
 text_sensor:
-  - platform: ti6342
+  - platform: ti6432
 #   heart_beat:
 #      name: "Heartbeat"
 #    product_model:
@@ -72,12 +72,12 @@ text_sensor:
 #      name: "Custom Mode Status"
 
 binary_sensor:
-  - platform: ti6342
+  - platform: ti6432
     has_target:
       name: "Presence Information"
 
 sensor:
-  - platform: ti6342
+  - platform: ti6432
     custom_presence_of_detection:
       #name: "Static Distance"
       name: "Zone 1 motion"
@@ -97,19 +97,19 @@ sensor:
       name: "Current Custom Mode"
 
 switch:
-  - platform: ti6342
+  - platform: ti6432
     underly_open_function:
       name: Underlying Open Function Info Output Switch
 
 button:
-  - platform: ti6342
+  - platform: ti6432
     restart:
       name: "Module Restart"
     custom_set_end:
       name: "End Of Custom Mode Settings"
 
 select:
-  - platform: ti6342
+  - platform: ti6432
     scene_mode:
       name: "Scene"
     unman_time:
@@ -120,7 +120,7 @@ select:
       name: "Motion Boundary"
 
 number:
-  - platform: ti6342
+  - platform: ti6432
     sensitivity:
       name: "Sensitivity"
     custom_mode:
