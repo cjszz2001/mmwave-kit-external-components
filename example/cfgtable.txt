@@ -1,0 +1,49 @@
+presence detection table based on PresenceDetect.cfg
+/////////////////////////
+#define MAX_TRACKER_CMD 20
+#define MAX_PRESENCE_CMD 16
+#define MAX_RADAR_CMD 22
+#define MAX_RADAR_CMD_AOP 21
+
+char* radarCmdString[MAX_RADAR_CMD] =
+{
+#if 1
+"channelCfg 7 3 0 \r\n",
+"chirpComnCfg 18 0 0 128 4 30 0 \r\n",
+"chirpTimingCfg 6 28 0 90 59.75 \r\n",
+"frameCfg 8 0 403 1 250 0 \r\n",
+"guiMonitor 0 0 0 0 0 0 1 0 0 0 0 0 \r\n",
+"sigProcChainCfg 64 8 2 0 4 4 0 .5 \r\n",
+"cfarCfg 2 4 3 2 0 12.0 0 0.5 0 1 1 1 \r\n",
+"aoaFovCfg -60 60 -40 40 \r\n",
+"rangeSelCfg 0.1 6.0 \r\n",
+"clutterRemoval 1 \r\n",
+"compRangeBiasAndRxChanPhase 0.0 1.00000 0.00000 -1.00000 0.00000 1.00000 0.00000 -1.00000 0.00000 1.00000 0.00000 -1.00000 0.00000 \r\n",
+"adcDataSource 0 adc_data_0001_CtestAdc6Ant.bin \r\n",
+"adcLogging 0 \r\n",
+"lowPowerCfg 0 \r\n",
+"factoryCalibCfg 1 0 40 0 0x1ff000 \r\n",
+"mpdBoundaryBox 1 -1 1 0 1.5 0 2 \r\n",
+"mpdBoundaryBox 2 -1 1 1.5 3.0 0 2 \r\n",
+"mpdBoundaryBox 3 -1 1 3.0 4.5 0 2 \r\n",
+//"boundaryBox -2 2 0 6 -0.5 2.5 \r\n",             //tracking layer parameters/scenery para
+"sensorPosition 0.00 0.00 2.00 0.00 0.00 \r\n",     //tracking layer parameters/scenery para
+//"staticBoundaryBox -2 2 0.4 6 0 2.5 \r\n",          //tracking layer parameters/scenery para
+//"presenceBoundaryBox -2 2 0.4 6 0 2.5 \r\n",          //tracking layer parameters/scenery para
+//"gatingParam 3 2 2 2 4 \r\n",                       //tracking layer parameters/gateing para
+//"stateParam 3 3 12 50 5 200 \r\n",                  //tracking layer parameters/state para
+//"stateParam 3 3 12 200 5 350 \r\n",                  //tracking layer parameters/state para
+//"allocationParam 6 10 0.1 4 0.5 20 \r\n",           //tracking layer parameters/allocation para
+//"maxAcceleration 0.4 0.4 0.1 \r\n",                 //tracking layer parameters/maxAcceleration para
+//"trackingCfg 1 2 100 3 61.4 191.8 100 \r\n",        //tracking layer parameters/tracker config para
+//"microDopplerCfg 1 0 0.5 0 1 1 12.5 87.5 1 \r\n",
+//"classifierCfg 1 0.5 2 \r\n",
+"minorStateCfg 5 4 40 8 4 30 8 8 \r\n",
+//"majorStateCfg 4 2 30 10 8 80 4 4 \r\n",
+"clusterCfg 1 0.5 2 \r\n",
+//"mpdBoundaryBox 1 0 1.48 0 1.95 0 3 \r\n",
+////"mpdBoundaryBox 2 0 1.48 1.95 3.9 0 3 \r\n",
+//"mpdBoundaryBox 3 -1.48 0 0 1.95 0 3 \r\n",
+"sensorStart 0 0 0 0 \r\n"
+#endif
+};
