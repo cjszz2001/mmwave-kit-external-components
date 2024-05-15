@@ -44,7 +44,9 @@ static const uint8_t FRAME_HEADER_LEN                = sizeof(MmwDemo_output_mes
 static const uint8_t FRAME_MAX_TOTAL_TLV_NUMBER      = 16;  // *** temporary setup
 static const uint32_t TLV_MAX_SIZE                   = 1024; // max size for a TL + V
 static const uint32_t MESSAGE_MAX_V_SIZE             = TLV_MAX_SIZE - sizeof(MmwDemo_output_message_tl);
-
+static const uint32_t CLASSIFICATION_MAX_FRAMES      = 5; //use 5 frames data to decide human/non-human
+static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at the same time.
+static const int8_t   UNKNOWN_TARGET                 = 0x55; // preset value to init buffer
 enum {
   FRAME_IN_IDLE,
   FRAME_IN_HEADER,
@@ -153,6 +155,20 @@ class TI6432Component : public Component,
      uint8_t                         v[MESSAGE_MAX_V_SIZE];
   } MESSAGE_TLV;
 
+  typedef struct 
+  {
+     // set to 2 float value because NUM_CLASSES_IN_CLASSIFIER defined as 2
+     float    humanProb;
+     float    nonHumanProb;
+  } CLASS_PROBABILITY;
+
+  typedef struct 
+  {
+     uint8_t targetId; //UNKNOWN_TARGET init value
+     uint8_t validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
+     int8_t  isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
+  } CLASSIFICATION_DATA;
+
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_product_id_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_hardware_model_[PRODUCT_BUF_MAX_SIZE + 1];
@@ -169,9 +185,10 @@ class TI6432Component : public Component,
 
   std::vector<uint8_t>            zone_presence;
   std::vector<trackerProc_Target> targets;
-  std::vector<uint8_t>            indexes;
-  std::vector<uint32_t>           class_outcome;
-  
+  //std::vector<uint8_t>            indexes;
+  //std::vector<CLASS_OUTCOME>      class_outcome;
+  std::vector<CLASSIFICATION_DATA>  class_outcome;
+
   uint8_t sg_frame_buf_[FRAME_BUF_MAX_SIZE];
   uint8_t sg_frame_prase_buf_[FRAME_BUF_MAX_SIZE];
   int sg_start_query_data_;

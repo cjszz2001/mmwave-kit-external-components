@@ -38,8 +38,11 @@ void TI6432Component::dump_config() {
   LOG_SENSOR(" ", "Movement Signs Sensor", this->movement_signs_sensor_);
 //zone 3  
   LOG_SENSOR(" ", "Custom Motion Distance Sensor", this->custom_motion_distance_sensor_);
-  LOG_SENSOR(" ", "Custom Spatial Static Sensor", this->custom_spatial_static_value_sensor_);
+// target ID
+  LOG_SENSOR(" ", "Custom Spatial Static Sensor", this->custom_spatial_static_value_sensor_);  
+// human or non-human  
   LOG_SENSOR(" ", "Custom Spatial Motion Sensor", this->custom_spatial_motion_value_sensor_);
+
   LOG_SENSOR(" ", "Custom Motion Speed Sensor", this->custom_motion_speed_sensor_);
   LOG_SENSOR(" ", "Custom Mode Num Sensor", this->custom_mode_num_sensor_);
 #endif
@@ -102,6 +105,14 @@ void TI6432Component::setup() {
   this->pos_in_frame = FRAME_IN_IDLE;
 
   this->set_interval(8000, [this]() { this->update_(); });
+
+
+  class_outcome.clear();
+//   for (auto class : this->class_outcome)
+//   {
+//      class.targetId = UNKNOWN_TARGET;
+//      memset(class.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
+//   }
 }
 
 // Timed polling of radar data
@@ -215,8 +226,8 @@ void TI6432Component::loop() {
       ///// temp code, to clear out all results for next frame
       this->zone_presence.clear();
       this->targets.clear();
-      this->indexes.clear();
-      this->class_outcome.clear();
+      /////this->indexes.clear();
+      /////this->class_outcome.clear();
 
       // break; // break from while, to avoid blocking other tasks.
     }
@@ -336,7 +347,13 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
 
    uint32_t numDetectedTargets = length/sizeof(trackerProc_Target); 
    ESP_LOGD(TAG, "TLV target list: numDetectedTargets=%d", numDetectedTargets);
+   if (numDetectedTargets > MAX_TARGET_NUMBER)
+   {
+      ESP_LOGE(TAG, "TLV target list: too many targets (%d)", numDetectedTargets);
+      return;
+   }
 
+   uint8_t buf[MAX_TARGET_NUMBER];
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
       trackerProc_Target oneTarget;
@@ -344,18 +361,110 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       this->targets.push_back(oneTarget);
       /////todo: when to empty targets
       ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);
+      buf[i] = oneTarget.tid; // save for following handling
+   }
+
+   // for each target already existed in previous frames, check if it still exists in the new frame,
+   // if not found, remove the target from the list
+   for (auto it = this->class_outcome.begin(); it != this->class_outcome.end();)
+   {
+      bool found = false;
+      for (uint32_t i=0; i<numDetectedTargets; i++)
+      {
+         if (it->targetId == buf[i])
+         {
+            found = true;
+            buf[i] = UNKNOWN_TARGET; //remove this target from buf
+            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", it->targetId);
+            break;
+         }
+      }
+      if(!found)
+      {
+         ESP_LOGD(TAG, "TLV target list: delete targetId=%d", it->targetId);
+         // this target not existed any more, remove all its data
+         it = this->class_outcome.erase(it);
+      }
+      else
+      {
+         ++it;
+      }
+   }
+
+   // until now, class_outcome removed non-existed targets from previous frames.
+   // next, add in new target IDs found in the new frame
+   for (uint32_t i=0; i<numDetectedTargets; i++)
+   {
+      if (buf[i] != UNKNOWN_TARGET)
+      {
+         // this is a new target
+         CLASSIFICATION_DATA newClass;
+
+         newClass.targetId = buf[i];
+         newClass.validFrameNum = 0;
+         memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
+         this->class_outcome.push_back(newClass);
+         ESP_LOGD(TAG, "TLV target index: add new targetId=%d", buf[i]);
+      }
    }
 }
 
 void TI6432Component::handle_ext_msg_target_index(uint8_t *data, uint32_t length)
 {
-   // Number of Points x 1 Byte
-   // Contains target ID, allocating every point to a specific target or no target
-   for (uint32_t i=0; i<length; i++)
-   {
-      this->indexes.push_back(data[i]);
-      ESP_LOGD(TAG, "TLV target index: targetIndex=%d, value=%d", i, indexes[i]);
-   }
+   // // Number of Points x 1 Byte
+   // // Contains target ID, allocating every point to a specific target or no target
+   // if (length > MAX_TARGET_NUMBER)
+   // {
+   //    ESP_LOGE(TAG, "TLV target index: too many targets (%d)", length);
+   //    return;
+   // }
+   // uint8_t buf[MAX_TARGET_NUMBER];
+   
+   // memcpy(buf, data, length); //copy over, so we can change
+
+   // // for each target already existed in previous frames, check if it still exists in the new frame,
+   // // if not found, remove the target from the list
+   // for (auto it = this->class_outcome.begin(); it != this->class_outcome.end();)
+   // {
+   //    bool found = false;
+   //    for (uint32_t i=0; i<length; i++)
+   //    {
+   //       if (it->targetId == buf[i])
+   //       {
+   //          found = true;
+   //          buf[i] = UNKNOWN_TARGET; //remove this target from buf
+   //          ESP_LOGD(TAG, "TLV target index: found existing targetId=%d", it->targetId);
+   //          break;
+   //       }
+   //    }
+   //    if(!found)
+   //    {
+   //       ESP_LOGD(TAG, "TLV target index: delete targetId=%d", it->targetId);
+   //       // this target not existed any more, remove all its data
+   //       it = this->class_outcome.erase(it);
+   //    }
+   //    else
+   //    {
+   //       ++it;
+   //    }
+   // }
+
+   // // until now, class_outcome removed non-existed targets from previous frames.
+   // // next, add in new target IDs found in the new frame
+   // for (uint32_t i=0; i<length; i++)
+   // {
+   //    if (buf[i] != UNKNOWN_TARGET)
+   //    {
+   //       // this is a new target
+   //       CLASSIFICATION_DATA newClass;
+
+   //       newClass.targetId = buf[i];
+   //       newClass.validFrameNum = 0;
+   //       memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
+   //       this->class_outcome.push_back(newClass);
+   //       ESP_LOGD(TAG, "TLV target index: add new targetId=%d", buf[i]);
+   //    }
+   // }
 }
 
 void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t length)
@@ -364,10 +473,100 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
    // Array of classifier outcome in Q7 format, packed as classOutcome[targetIndex][classIndex]
    uint32_t numDetectedTargets = length/NUM_CLASSES_IN_CLASSIFIER;
 
+   if (numDetectedTargets != this->class_outcome.size())
+   {
+      //by now, class_outcome should already updated according to 308
+      //total target number should always match
+      ESP_LOGE(TAG, "TLV classifier info: target number not match. in 317 =%d, in class_outcome = %d", this->class_outcome.size());
+      return;
+   }
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
-      this->class_outcome.push_back(data[i*2] << 8 + data[i*2+1]);
-      ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, value=%d", i, class_outcome[i]);
+      CLASS_PROBABILITY prob;
+
+      prob.humanProb    = (float)data[i*2]   / 128;
+      prob.nonHumanProb = (float)data[i*2+1] / 128;
+      if (prob.humanProb != 0.5)
+      {
+         ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
+         uint8_t isHumanIndex = this->class_outcome[i].validFrameNum;
+         if (prob.humanProb >= CLASSIFIER_CONFIDENCE_SCORE)
+         {
+            // human detected
+            if (isHumanIndex < CLASSIFICATION_MAX_FRAMES)
+            {
+               this->class_outcome[i].isHuman[isHumanIndex] = 1;
+               this->class_outcome[i].validFrameNum ++;
+            }
+            else
+            {
+               //valid frame is full of class_outcome, remove the oldest one.
+               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES-1; i++ )
+               {
+                  this->class_outcome[i] = this->class_outcome[i+1];
+               }
+               this->class_outcome[i].isHuman[CLASSIFICATION_MAX_FRAMES] = 1;
+            }
+
+            if (this->class_outcome[i].validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            {
+               int8_t sum = 0;
+               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES; i++)
+               {
+                  sum += this->class_outcome[i].isHuman[i];
+               }
+               if (sum > 0)
+               {
+                  //overall, human detected, report
+                  this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
+                  this->custom_spatial_motion_value_sensor_->publish_state(1);
+                  ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d", this->class_outcome[i].targetId);
+               }
+               // no need to report non-human, because it should be reported before
+               // only possible change is from non-human to human
+            }
+         }
+         else if (prob.nonHumanProb >= CLASSIFIER_CONFIDENCE_SCORE)
+         {
+            // non-human detected
+            if (isHumanIndex < CLASSIFICATION_MAX_FRAMES)
+            {
+               this->class_outcome[i].isHuman[isHumanIndex] = -1;
+               this->class_outcome[i].validFrameNum ++;
+            }
+            else
+            {
+               //valid frame is full of class_outcome, remove the oldest one.
+               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES-1; i++ )
+               {
+                  this->class_outcome[i] = this->class_outcome[i+1];
+               }
+               this->class_outcome[i].isHuman[CLASSIFICATION_MAX_FRAMES] = -1;
+            }
+
+            if (this->class_outcome[i].validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            {
+               int8_t sum = 0;
+               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES; i++)
+               {
+                  sum += this->class_outcome[i].isHuman[i];
+               }
+               if (sum < 0)
+               {
+                  //overall, non-human detected, report
+                  this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
+                  this->custom_spatial_motion_value_sensor_->publish_state(0);
+                  ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d", this->class_outcome[i].targetId);
+               }
+               // no need to report human, because it should be reported before
+               // only possible change is from human to non-human
+            }
+         }
+         else
+         {
+            // unknown, ignore this frame
+         }
+      }
    }
 }
 
