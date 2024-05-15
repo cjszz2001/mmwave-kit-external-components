@@ -519,7 +519,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                {
                   //overall, human detected, report
                   this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
-                  this->custom_spatial_motion_value_sensor_->publish_state(1);
+                  this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d", this->class_outcome[i].targetId);
                }
                // no need to report non-human, because it should be reported before
@@ -555,7 +555,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                {
                   //overall, non-human detected, report
                   this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
-                  this->custom_spatial_motion_value_sensor_->publish_state(0);
+                  this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d", this->class_outcome[i].targetId);
                }
                // no need to report human, because it should be reported before
