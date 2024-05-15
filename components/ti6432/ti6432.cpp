@@ -482,45 +482,46 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
    }
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
-      CLASS_PROBABILITY prob;
+      CLASS_PROBABILITY     prob;
+      CLASSIFICATION_DATA   * pClassData = &(this->class_outcome[i]);
 
       prob.humanProb    = (float)data[i*2]   / 128;
       prob.nonHumanProb = (float)data[i*2+1] / 128;
+      ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
       if (prob.humanProb != 0.5)
       {
-         ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
-         uint8_t isHumanIndex = this->class_outcome[i].validFrameNum;
+         uint8_t isHumanIndex = pClassData->validFrameNum;
          if (prob.humanProb >= CLASSIFIER_CONFIDENCE_SCORE)
          {
             // human detected
             if (isHumanIndex < CLASSIFICATION_MAX_FRAMES)
             {
-               this->class_outcome[i].isHuman[isHumanIndex] = 1;
-               this->class_outcome[i].validFrameNum ++;
+               pClassData->isHuman[isHumanIndex] = 1;
+               pClassData->validFrameNum ++;
             }
             else
             {
                //valid frame is full of class_outcome, remove the oldest one.
-               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES-1; i++ )
+               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES-1; frameNum++ )
                {
-                  this->class_outcome[i] = this->class_outcome[i+1];
+                  pClassData->isHuman[frameNum] = pClassData->isHuman[frameNum+1];
                }
-               this->class_outcome[i].isHuman[CLASSIFICATION_MAX_FRAMES] = 1;
+               pClassData->isHuman[CLASSIFICATION_MAX_FRAMES-1] = 1;
             }
 
-            if (this->class_outcome[i].validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
             {
                int8_t sum = 0;
-               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES; i++)
+               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
                {
-                  sum += this->class_outcome[i].isHuman[i];
+                  sum += pClassData->isHuman[frameNum];
                }
                if (sum > 0)
                {
                   //overall, human detected, report
-                  this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
+                  this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
-                  ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d", this->class_outcome[i].targetId);
+                  ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
                }
                // no need to report non-human, because it should be reported before
                // only possible change is from non-human to human
@@ -531,32 +532,32 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
             // non-human detected
             if (isHumanIndex < CLASSIFICATION_MAX_FRAMES)
             {
-               this->class_outcome[i].isHuman[isHumanIndex] = -1;
-               this->class_outcome[i].validFrameNum ++;
+               pClassData->isHuman[isHumanIndex] = -1;
+               pClassData->validFrameNum ++;
             }
             else
             {
                //valid frame is full of class_outcome, remove the oldest one.
-               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES-1; i++ )
+               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES-1; frameNum++ )
                {
-                  this->class_outcome[i] = this->class_outcome[i+1];
+                  pClassData->isHuman[frameNum] = pClassData->isHuman[frameNum+1];
                }
-               this->class_outcome[i].isHuman[CLASSIFICATION_MAX_FRAMES] = -1;
+               pClassData->isHuman[CLASSIFICATION_MAX_FRAMES-1] = -1;
             }
 
-            if (this->class_outcome[i].validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
             {
                int8_t sum = 0;
-               for (uint8_t i=0; i<CLASSIFICATION_MAX_FRAMES; i++)
+               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
                {
-                  sum += this->class_outcome[i].isHuman[i];
+                  sum += pClassData->isHuman[frameNum];
                }
                if (sum < 0)
                {
                   //overall, non-human detected, report
-                  this->custom_spatial_static_value_sensor_->publish_state(this->class_outcome[i].targetId);
+                  this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
-                  ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d", this->class_outcome[i].targetId);
+                  ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
                }
                // no need to report human, because it should be reported before
                // only possible change is from human to non-human
