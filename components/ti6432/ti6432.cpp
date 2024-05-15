@@ -191,7 +191,30 @@ void TI6432Component::loop() {
       {
          ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
          // read in V
-         this->read_array(((uint8_t *)&(current_message.v)), current_message.tl.length);
+         if (current_message.tl.length > 100)
+         {
+            // if length is >100, read 100 bytes out every time
+            // this is to solve UART time out issue
+            uint32_t readCount = 0;
+            while (readCount < current_message.tl.length)
+            {
+               if (readCount + 100 >= current_message.tl.length)
+               {
+                  this->read_array(((uint8_t *)(&(current_message.v)+readCount)), current_message.tl.length-readCount);
+                  break; // read all data out
+               }
+               else
+               {
+                  this->read_array(((uint8_t *)(&(current_message.v)+readCount)), 100);
+                  readCount += 100;
+               }
+            }
+         
+         }
+         else
+         {
+            this->read_array(((uint8_t *)&(current_message.v)), current_message.tl.length);
+         }
          this->message_tlv.push_back(current_message);
       }
       else
