@@ -404,7 +404,7 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          newClass.validFrameNum = 0;
          memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
          this->class_outcome.push_back(newClass);
-         ESP_LOGD(TAG, "TLV target index: add new targetId=%d", buf[i]);
+         ESP_LOGD(TAG, "TLV target list: add new targetId=%d", buf[i]);
       }
    }
 }
