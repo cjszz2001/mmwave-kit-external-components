@@ -197,7 +197,7 @@ void TI6432Component::loop() {
       else
       {
          // length is invalid, skip this TLV
-         ESP_LOGD(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
+         ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
       }
       current_num_tlv += 1;
       if (current_num_tlv >= this->frame_header.numTLVs)
