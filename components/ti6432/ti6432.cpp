@@ -209,7 +209,6 @@ void TI6432Component::loop() {
                   readCount += 100;
                }
             }
-         
          }
          else
          {
@@ -508,8 +507,8 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
       CLASS_PROBABILITY     prob;
       CLASSIFICATION_DATA   * pClassData = &(this->class_outcome[i]);
 
-      prob.humanProb    = (float)data[i*2]   / 128;
-      prob.nonHumanProb = (float)data[i*2+1] / 128;
+      prob.humanProb    = (float)data[i*2+1] / 128;
+      prob.nonHumanProb = (float)data[i*2]   / 128;
       ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
       if (prob.humanProb != 0.5)
       {
