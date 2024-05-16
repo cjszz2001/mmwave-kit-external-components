@@ -137,7 +137,7 @@ void TI6432Component::loop() {
    //  ESP_LOGD(TAG, "0x%x", byte);
 
    //  memset(buffer, 0, max_line_length);
-   //  this->read_array(buffer, max_line_length);
+   //  this->read_array_with_delay(buffer, max_line_length);
    //  for (uint8_t i=0; i<max_line_length; i=i+4)
    //  {
    //    ESP_LOGD(TAG, "0x%x, 0x%x, 0x%x, 0x%x", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
@@ -172,7 +172,7 @@ void TI6432Component::loop() {
     case FRAME_IN_HEADER:
     {
       // read in whole frame header
-      this->read_array(((uint8_t *)&(this->frame_header.version)), (FRAME_HEADER_LEN - FRAME_MAGIC_WORD_LEN));
+      this->read_array_with_delay(((uint8_t *)&(this->frame_header.version)), (FRAME_HEADER_LEN - FRAME_MAGIC_WORD_LEN));
       ESP_LOGD(TAG, "Frame header read in, numTLVs==%d", this->frame_header.numTLVs);
       if (this->frame_header.numTLVs > 0)
       {
@@ -185,35 +185,13 @@ void TI6432Component::loop() {
     {
       MESSAGE_TLV current_message;
       // read in TL
-      this->read_array(((uint8_t *)&(current_message.tl)), sizeof(MmwDemo_output_message_tl));
+      this->read_array_with_delay(((uint8_t *)&(current_message.tl)), sizeof(MmwDemo_output_message_tl));
       
       if (current_message.tl.length <= MESSAGE_MAX_V_SIZE)
       {
          ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
          // read in V
-         if (current_message.tl.length > 100)
-         {
-            // if length is >100, read 100 bytes out every time
-            // this is to solve UART time out issue
-            uint32_t readCount = 0;
-            while (readCount < current_message.tl.length)
-            {
-               if (readCount + 100 >= current_message.tl.length)
-               {
-                  this->read_array(((uint8_t *)(&(current_message.v)+readCount)), current_message.tl.length-readCount);
-                  break; // read all data out
-               }
-               else
-               {
-                  this->read_array(((uint8_t *)(&(current_message.v)+readCount)), 100);
-                  readCount += 100;
-               }
-            }
-         }
-         else
-         {
-            this->read_array(((uint8_t *)&(current_message.v)), current_message.tl.length);
-         }
+         this->read_big_data_from_uart(((uint8_t *)&(current_message.v)), current_message.tl.length);
          this->message_tlv.push_back(current_message);
       }
       else
@@ -312,6 +290,47 @@ void TI6432Component::handle_frame(void)
    }
 }
 
+void TI6432Component::read_big_data_from_uart(uint8_t *data, uint32_t length)
+{
+   if (length > 100)
+   {
+      // if length is >100, read 100 bytes out every time
+      uint32_t readCount = 0;
+      while (readCount < length)
+      {
+         if (readCount + 100 >= length)
+         {
+            this->read_array_with_delay(data+readCount, length-readCount);
+            break; // read all data out
+         }
+         else
+         {
+            this->read_array_with_delay(data+readCount, 100);
+            readCount += 100;
+         }
+      }
+   }
+   else
+   {
+      this->read_array_with_delay(data, length);
+   }
+}
+
+void TI6432Component::read_array_with_delay(uint8_t *data, uint32_t length)
+{
+   uint32_t start_time = millis();
+   while (this->available() < length) 
+   {
+      if (millis() - start_time > 500) 
+      {
+         ESP_LOGE(TAG, "Reading from UART timed out at byte %u!", this->available());
+         return;
+      }
+      yield();
+   }
+   this->read_array(data, length);
+}
+
 void TI6432Component::handle_ext_msg_enhanced_presence_indication(uint8_t *data, uint32_t length)
 {
    // (1 + ceiling(NumberOfZones/4) x 1 Byte
@@ -403,6 +422,13 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       }
       if(!found)
       {
+         if (it->reported)
+         {
+            // this target was reported, clear out reported status
+            this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
+            this->custom_spatial_motion_value_sensor_->publish_state(0);
+            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", it->targetId);         
+         }
          ESP_LOGD(TAG, "TLV target list: delete targetId=%d", it->targetId);
          // this target not existed any more, remove all its data
          it = this->class_outcome.erase(it);
@@ -422,8 +448,9 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          // this is a new target
          CLASSIFICATION_DATA newClass;
 
-         newClass.targetId = buf[i];
+         newClass.targetId      = buf[i];
          newClass.validFrameNum = 0;
+         newClass.reported      = false;
          memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
          this->class_outcome.push_back(newClass);
          ESP_LOGD(TAG, "TLV target list: add new targetId=%d", buf[i]);
@@ -544,6 +571,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+                  pClassData->reported = true;
                }
                // no need to report non-human, because it should be reported before
                // only possible change is from non-human to human
@@ -580,6 +608,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+                  pClassData->reported = true;
                }
                // no need to report human, because it should be reported before
                // only possible change is from human to non-human

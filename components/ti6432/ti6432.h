@@ -164,8 +164,9 @@ class TI6432Component : public Component,
 
   typedef struct 
   {
-     uint8_t targetId; //UNKNOWN_TARGET init value
+     uint8_t targetId;      // UNKNOWN_TARGET init value
      uint8_t validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
+     bool    reported;      // this target human/non-human is reported or not, if reported already, when target disappeared, report needs to be clear out as well.
      int8_t  isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
   } CLASSIFICATION_DATA;
 
@@ -213,7 +214,10 @@ class TI6432Component : public Component,
   void handle_ext_msg_range_profile_major(uint8_t *data, uint32_t length);
   void handle_ext_msg_range_profile_minor(uint8_t *data, uint32_t length);
   void handle_msg_ext_stats(uint8_t *data, uint32_t length);
-  
+
+  void read_big_data_from_uart(uint8_t *data, uint32_t length);
+  void read_array_with_delay(uint8_t *data, uint32_t length);
+
  public:
   float get_setup_priority() const override { return esphome::setup_priority::LATE; }
   void setup() override;
