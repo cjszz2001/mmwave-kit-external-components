@@ -192,6 +192,7 @@ class TI6432Component : public Component,
   //std::vector<uint8_t>            indexes;
   //std::vector<CLASS_OUTCOME>      class_outcome;
   std::vector<CLASSIFICATION_DATA>  class_outcome;
+  int8_t                            reported_human_number;
 
   uint8_t sg_frame_buf_[FRAME_BUF_MAX_SIZE];
   uint8_t sg_frame_prase_buf_[FRAME_BUF_MAX_SIZE];

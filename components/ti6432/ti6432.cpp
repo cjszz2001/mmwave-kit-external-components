@@ -16,10 +16,12 @@ namespace ti6432 {
 
 static const char *const TAG = "ti6432";
 
-TimerHandle_t tracking_timer[MAX_TARGET_NUMBER];
+TimerHandle_t  tracking_timer[MAX_TARGET_NUMBER];
+static int8_t  resetTarget = UNKNOWN_TARGET;
+static int8_t  reportedHumanNumber = 0;
 
 static void timer_call_back(TimerHandle_t xTimer);
-static int8_t resetTarget = UNKNOWN_TARGET;
+
 
 // Prints the component's configuration data. dump_config() prints all of the component's configuration
 // items in an easy-to-read format, including the configuration key-value pairs.
@@ -49,7 +51,7 @@ void TI6432Component::dump_config() {
   LOG_SENSOR(" ", "Custom Spatial Static Sensor", this->custom_spatial_static_value_sensor_);  
 // human or non-human  
   LOG_SENSOR(" ", "Custom Spatial Motion Sensor", this->custom_spatial_motion_value_sensor_);
-
+// how many humans detected
   LOG_SENSOR(" ", "Custom Motion Speed Sensor", this->custom_motion_speed_sensor_);
   LOG_SENSOR(" ", "Custom Mode Num Sensor", this->custom_mode_num_sensor_);
 #endif
@@ -114,7 +116,10 @@ void TI6432Component::setup() {
   this->set_interval(8000, [this]() { this->update_(); });
 
 
-  class_outcome.clear();
+  this->reported_human_number = 0;
+  this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+
+  this->class_outcome.clear();
 //   for (auto class : this->class_outcome)
 //   {
 //      class.targetId = UNKNOWN_TARGET;
@@ -292,7 +297,11 @@ void TI6432Component::loop() {
                 this->custom_spatial_motion_value_sensor_->publish_state(0);
                 ESP_LOGD(TAG, "Loop: remove reported status for targetId=%d", outcome.targetId);   
                 
-                outcome.reported = false;     
+                outcome.reported = false; 
+
+                this->reported_human_number --;
+                this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+                ESP_LOGD(TAG, "Loop: reported_human_number=%d", this->reported_human_number);    
                 break; 
              }
           }  
@@ -504,7 +513,11 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
             ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", it->targetId);  
 
             xTimerStop(tracking_timer[it->timerIndex], 0);  
-            vTimerSetTimerID( tracking_timer[it->timerIndex], (void *)INVALID_TIMER_ID );     
+            vTimerSetTimerID( tracking_timer[it->timerIndex], (void *)INVALID_TIMER_ID );
+
+            this->reported_human_number --;
+            this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+            ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
          }
          ESP_LOGD(TAG, "TLV target list: delete targetId=%d", it->targetId);
          // this target not existed any more, remove all its data
@@ -661,11 +674,34 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                         pClassData->timerIndex = timerIndex;
                         vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
                      }
+                     pClassData->reported = true;
+
+                     this->reported_human_number ++;
+                     this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+                     ESP_LOGD(TAG, "TLV classifier info: reported_human_number=%d", this->reported_human_number);
                   }
-                  pClassData->reported = true;
+
                }
-               // no need to report non-human, because it should be reported before
-               // only possible change is from non-human to human
+               else if (sum < 0)
+               {
+                  // non-human detected
+                  if (pClassData->reported)
+                  {
+                     // this target WAS reported as human, but now it changes to non-human
+                     this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
+                     this->custom_spatial_motion_value_sensor_->publish_state(0);
+                     ESP_LOGD(TAG, "TLV classifier info: targetId=%d change from human to non-human, sum=%d", pClassData->targetId, sum);  
+
+                     xTimerStop(tracking_timer[pClassData->timerIndex], 0);  
+                     vTimerSetTimerID( tracking_timer[pClassData->timerIndex], (void *)INVALID_TIMER_ID );     
+                     pClassData->reported = false;
+                  
+                     this->reported_human_number --;
+                     this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+                     ESP_LOGD(TAG, "TLV classifier info: reported_human_number=%d", this->reported_human_number);
+                  }
+
+               }
             }
          }
          else if (prob.nonHumanProb >= CLASSIFIER_CONFIDENCE_SCORE)
@@ -686,36 +722,38 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                pClassData->isHuman[CLASSIFICATION_MAX_FRAMES-1] = -1;
             }
 
-            if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
-            {
-               int8_t sum = 0;
-               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
-               {
-                  sum += pClassData->isHuman[frameNum];
-               }
-               if (sum < 0)
-               {
-                  //overall, non-human detected, report
-                  this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
-                  this->custom_spatial_motion_value_sensor_->publish_state(sum);
-                  ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
-                  if (!pClassData->reported)
-                  {
-                     // first time to report this target
-                     // start timer to monitor disappear
-                     uint8_t timerIndex;
-                     if(findAvailableTimerIndex(&timerIndex))
-                     {
-                        xTimerStart(tracking_timer[timerIndex], 0);
-                        pClassData->timerIndex = timerIndex;
-                        vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
-                     }
-                  }
-                  pClassData->reported = true;
-               }
-               // no need to report human, because it should be reported before
-               // only possible change is from human to non-human
-            }
+            //////remove below part
+            ////// do NOT report NON-human, only report human detection
+            // if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            // {
+            //    int8_t sum = 0;
+            //    for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
+            //    {
+            //       sum += pClassData->isHuman[frameNum];
+            //    }
+            //    if (sum < 0)
+            //    {
+            //       //overall, non-human detected, report
+            //       this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
+            //       this->custom_spatial_motion_value_sensor_->publish_state(sum);
+            //       ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+            //       if (!pClassData->reported)
+            //       {
+            //          // first time to report this target
+            //          // start timer to monitor disappear
+            //          uint8_t timerIndex;
+            //          if(findAvailableTimerIndex(&timerIndex))
+            //          {
+            //             xTimerStart(tracking_timer[timerIndex], 0);
+            //             pClassData->timerIndex = timerIndex;
+            //             vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
+            //          }
+            //       }
+            //       pClassData->reported = true;
+            //    }
+            //    // no need to report human, because it should be reported before
+            //    // only possible change is from human to non-human
+            // }
          }
          else
          {
