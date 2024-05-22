@@ -49,6 +49,7 @@ static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at
 static const uint32_t UNKNOWN_TARGET                 = 0xFFFFFFFF; // preset value to init buffer
 static const uint32_t TRACKING_TIMEOUT_MS            = 2 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
+
 enum {
   FRAME_IN_IDLE,
   FRAME_IN_HEADER,
@@ -194,19 +195,9 @@ class TI6432Component : public Component,
   std::vector<CLASSIFICATION_DATA>  class_outcome;
   int8_t                            reported_human_number;
 
-  uint8_t sg_frame_buf_[FRAME_BUF_MAX_SIZE];
-  uint8_t sg_frame_prase_buf_[FRAME_BUF_MAX_SIZE];
-  int sg_start_query_data_;
-  bool check_dev_inf_sign_;
   bool poll_time_base_func_check_;
 
   void update_();
-  void r24_split_data_frame_(uint8_t value);
-  void r24_parse_data_frame_(uint8_t *data, uint8_t len);
-  void r24_frame_parse_open_underlying_information_(uint8_t *data);
-  void r24_frame_parse_work_status_(uint8_t *data);
-  void r24_frame_parse_product_information_(uint8_t *data);
-  void r24_frame_parse_human_information_(uint8_t *data);
   void send_query_(uint8_t *query, size_t string_length);
 
   void handle_frame(void);

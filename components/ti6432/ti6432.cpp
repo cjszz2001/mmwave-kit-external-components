@@ -92,24 +92,7 @@ void TI6432Component::setup() {
   if (this->custom_mode_num_sensor_ != nullptr) {
     this->custom_mode_num_sensor_->publish_state(0);
   }
-//   if (this->custom_mode_end_text_sensor_ != nullptr) {
-//     this->custom_mode_end_text_sensor_->publish_state("Not in custom mode");
-//   }
   this->set_custom_end_mode();
-  this->poll_time_base_func_check_ = true;
-  this->check_dev_inf_sign_ = true;
-  this->sg_start_query_data_ = STANDARD_FUNCTION_QUERY_PRODUCT_MODE;
-  this->sg_data_len_ = 0;
-  this->sg_frame_len_ = 0;
-  this->sg_recv_data_state_ = FRAME_IDLE;
-  this->s_output_info_switch_flag_ = OUTPUT_SWITCH_INIT;
-
-  memset(this->c_product_mode_, 0, PRODUCT_BUF_MAX_SIZE);
-  memset(this->c_product_id_, 0, PRODUCT_BUF_MAX_SIZE);
-  memset(this->c_firmware_version_, 0, PRODUCT_BUF_MAX_SIZE);
-  memset(this->c_hardware_model_, 0, PRODUCT_BUF_MAX_SIZE);
-  memset(this->sg_frame_prase_buf_, 0, FRAME_BUF_MAX_SIZE);
-  memset(this->sg_frame_buf_, 0, FRAME_BUF_MAX_SIZE);
 
   this->pos_in_frame = FRAME_IN_IDLE;
 
@@ -120,11 +103,6 @@ void TI6432Component::setup() {
   this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
 
   this->class_outcome.clear();
-//   for (auto class : this->class_outcome)
-//   {
-//      class.targetId = UNKNOWN_TARGET;
-//      memset(class.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
-//   }
 
   for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
   {
@@ -780,6 +758,12 @@ void TI6432Component::handle_msg_ext_stats(uint8_t *data, uint32_t length)
 
 }
 
+// Sending data frames
+void TI6432Component::send_query_(uint8_t *query, size_t string_length) 
+{ 
+//   this->write_array(query, string_length); 
+}
+
 // Calculate CRC check digit
 static uint8_t get_frame_crc_sum(const uint8_t *data, int len) {
   unsigned int crc_sum = 0;
@@ -796,11 +780,6 @@ static int get_frame_check_status(uint8_t *data, int len) {
   return (verified == crc_sum) ? 1 : 0;
 }
 
-// Sending data frames
-void TI6432Component::send_query_(uint8_t *query, size_t string_length) 
-{ 
-//   this->write_array(query, string_length); 
-}
 
 // Send Heartbeat Packet Command
 void TI6432Component::get_heartbeat_packet() {
@@ -993,215 +972,45 @@ void TI6432Component::get_custom_unman_time() {
 // Logic of setting: After setting, query whether the setting is successful or not!
 
 void TI6432Component::set_underlying_open_function(bool enable) {
-//   uint8_t underlyswitch_on[] = {0x53, 0x59, 0x08, 0x00, 0x00, 0x01, 0x01, 0xB6, 0x54, 0x43};
-//   uint8_t underlyswitch_off[] = {0x53, 0x59, 0x08, 0x00, 0x00, 0x01, 0x00, 0xB5, 0x54, 0x43};
-//   if (enable) {
-//     send_query_(underlyswitch_on, sizeof(underlyswitch_on));
-//   } else {
-//     send_query_(underlyswitch_off, sizeof(underlyswitch_off));
-//   }
-//   if (this->keep_away_text_sensor_ != nullptr) {
-//     this->keep_away_text_sensor_->publish_state("");
-//   }
-//   if (this->motion_status_text_sensor_ != nullptr) {
-//     this->motion_status_text_sensor_->publish_state("");
-//   }
-//   if (this->custom_spatial_static_value_sensor_ != nullptr) {
-//     this->custom_spatial_static_value_sensor_->publish_state(NAN);
-//   }
-//   if (this->custom_spatial_motion_value_sensor_ != nullptr) {
-//     this->custom_spatial_motion_value_sensor_->publish_state(NAN);
-//   }
-//   if (this->custom_motion_distance_sensor_ != nullptr) {
-//     this->custom_motion_distance_sensor_->publish_state(NAN);
-//   }
-//   if (this->custom_presence_of_detection_sensor_ != nullptr) {
-//     this->custom_presence_of_detection_sensor_->publish_state(NAN);
-//   }
-//   if (this->custom_motion_speed_sensor_ != nullptr) {
-//     this->custom_motion_speed_sensor_->publish_state(NAN);
-//   }
 }
 
 void TI6432Component::set_scene_mode(uint8_t value) {
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x05, 0x07, 0x00, 0x01, static_cast<uint8_t>(value), 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   if (this->custom_mode_number_ != nullptr) {
-//     this->custom_mode_number_->publish_state(0);
-//   }
-//   if (this->custom_mode_num_sensor_ != nullptr) {
-//     this->custom_mode_num_sensor_->publish_state(0);
-//   }
-//   this->get_scene_mode();
-//   this->get_sensitivity();
-//   this->get_custom_mode();
-//   this->get_existence_boundary();
-//   this->get_motion_boundary();
-//   this->get_existence_threshold();
-//   this->get_motion_threshold();
-//   this->get_motion_trigger_time();
-//   this->get_motion_to_rest_time();
-//   this->get_custom_unman_time();
 }
 
 void TI6432Component::set_sensitivity(uint8_t value) {
-//   if (value == 0x00)
-//     return;
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x05, 0x08, 0x00, 0x01, value, 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_scene_mode();
-//   this->get_sensitivity();
 }
 
 void TI6432Component::set_restart() {
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x01, 0x02, 0x00, 0x01, 0x0F, 0xBF, 0x54, 0x43};
-//   this->send_query_(send_data, send_data_len);
-//   this->check_dev_inf_sign_ = true;
 }
 
 void TI6432Component::set_unman_time(uint8_t value) {
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x80, 0x0a, 0x00, 0x01, static_cast<uint8_t>(value), 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_unmanned_time();
 }
 
 void TI6432Component::set_custom_mode(uint8_t mode) {
-//   if (mode == 0) {
-//     this->set_custom_end_mode();  // Equivalent to end setting
-//     if (this->custom_mode_number_ != nullptr) {
-//       this->custom_mode_number_->publish_state(0);
-//     }
-//     return;
-//   }
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x05, 0x09, 0x00, 0x01, mode, 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_existence_boundary();
-//   this->get_motion_boundary();
-//   this->get_existence_threshold();
-//   this->get_motion_threshold();
-//   this->get_motion_trigger_time();
-//   this->get_motion_to_rest_time();
-//   this->get_custom_unman_time();
-//   this->get_custom_mode();
-//   this->get_scene_mode();
-//   this->get_sensitivity();
 }
 
 void TI6432Component::set_custom_end_mode() {
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x05, 0x0a, 0x00, 0x01, 0x0F, 0xCB, 0x54, 0x43};
-//   this->send_query_(send_data, send_data_len);
-//   if (this->custom_mode_number_ != nullptr) {
-//     this->custom_mode_number_->publish_state(0);  // Clear setpoints
-//   }
-//   this->get_existence_boundary();
-//   this->get_motion_boundary();
-//   this->get_existence_threshold();
-//   this->get_motion_threshold();
-//   this->get_motion_trigger_time();
-//   this->get_motion_to_rest_time();
-//   this->get_custom_unman_time();
-//   this->get_custom_mode();
-//   this->get_scene_mode();
-//   this->get_sensitivity();
 }
 
 void TI6432Component::set_existence_boundary(uint8_t value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x08, 0x0A, 0x00, 0x01, static_cast<uint8_t>(value + 1), 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_existence_boundary();
 }
 
 void TI6432Component::set_motion_boundary(uint8_t value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x08, 0x0B, 0x00, 0x01, static_cast<uint8_t>(value + 1), 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_motion_boundary();
 }
 
 void TI6432Component::set_existence_threshold(int value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x08, 0x08, 0x00, 0x01, (uint8_t) value, 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_existence_threshold();
 }
 
 void TI6432Component::set_motion_threshold(int value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   uint8_t send_data_len = 10;
-//   uint8_t send_data[10] = {0x53, 0x59, 0x08, 0x09, 0x00, 0x01, (uint8_t) value, 0x00, 0x54, 0x43};
-//   send_data[7] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_motion_threshold();
 }
 
 void TI6432Component::set_motion_trigger_time(int value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   int h24_num = (value >> 24) & 0xff;
-//   int h16_num = (value >> 16) & 0xff;
-//   int h8_num = (value >> 8) & 0xff;
-//   int l8_num = value & 0xff;
-//   uint8_t send_data_len = 13;
-//   uint8_t send_data[13] = {
-//       0x53, 0x59, 0x08, 0x0C, 0x00, 0x04, (uint8_t) h24_num, (uint8_t) h16_num, (uint8_t) h8_num, (uint8_t) l8_num,
-//       0x00, 0x54, 0x43};
-//   send_data[10] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_motion_trigger_time();
 }
 
 void TI6432Component::set_motion_to_rest_time(int value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   int h24_num = (value >> 24) & 0xff;
-//   int h16_num = (value >> 16) & 0xff;
-//   int h8_num = (value >> 8) & 0xff;
-//   int l8_num = value & 0xff;
-//   uint8_t send_data_len = 13;
-//   uint8_t send_data[13] = {
-//       0x53, 0x59, 0x08, 0x0D, 0x00, 0x04, (uint8_t) h24_num, (uint8_t) h16_num, (uint8_t) h8_num, (uint8_t) l8_num,
-//       0x00, 0x54, 0x43};
-//   send_data[10] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_motion_to_rest_time();
 }
 
 void TI6432Component::set_custom_unman_time(int value) {
-//   if ((this->custom_mode_num_sensor_ != nullptr) && (this->custom_mode_num_sensor_->state == 0))
-//     return;  // You'll have to check that you're in custom mode to set it up
-//   value *= 1000;
-//   int h24_num = (value >> 24) & 0xff;
-//   int h16_num = (value >> 16) & 0xff;
-//   int h8_num = (value >> 8) & 0xff;
-//   int l8_num = value & 0xff;
-//   uint8_t send_data_len = 13;
-//   uint8_t send_data[13] = {
-//       0x53, 0x59, 0x08, 0x0E, 0x00, 0x04, (uint8_t) h24_num, (uint8_t) h16_num, (uint8_t) h8_num, (uint8_t) l8_num,
-//       0x00, 0x54, 0x43};
-//   send_data[10] = get_frame_crc_sum(send_data, send_data_len);
-//   this->send_query_(send_data, send_data_len);
-//   this->get_custom_unman_time();
 }
 }  // namespace ti6432
 }  // namespace esphome
