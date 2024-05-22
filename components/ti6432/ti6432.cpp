@@ -230,8 +230,8 @@ void TI6432Component::loop() {
       current_num_tlv += 1;
       if (current_num_tlv >= this->frame_header.numTLVs)
       {
+         yield();
          //this frame is over
-         ESP_LOGD(TAG, "Whole frame is read in.");
          this->handle_frame();
          //prepare for next frame
          this->pos_in_frame = FRAME_TO_RESET;
@@ -243,6 +243,8 @@ void TI6432Component::loop() {
     }
     if (this->pos_in_frame == FRAME_TO_RESET)
     {
+      yield();
+      
       // error happens, or frame is ended
       ESP_LOGD(TAG, "Reset to prepare for next frame.");
       this->pos_in_frame            = FRAME_IN_IDLE;     
