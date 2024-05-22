@@ -17,8 +17,8 @@ namespace ti6432 {
 static const char *const TAG = "ti6432";
 
 TimerHandle_t  tracking_timer[MAX_TARGET_NUMBER];
-static int8_t  resetTarget = UNKNOWN_TARGET;
-static int8_t  reportedHumanNumber = 0;
+static uint32_t  resetTarget = UNKNOWN_TARGET;
+static int8_t    reportedHumanNumber = 0;
 
 static void timer_call_back(TimerHandle_t xTimer);
 
@@ -471,7 +471,7 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       return;
    }
 
-   uint8_t buf[MAX_TARGET_NUMBER];
+   uint32_t buf[MAX_TARGET_NUMBER];
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
       trackerProc_Target oneTarget;
@@ -627,13 +627,13 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
 
       prob.humanProb    = (float)data[i*2+1] / 128;
       prob.nonHumanProb = (float)data[i*2]   / 128;
-      ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
       if (prob.humanProb != 0.5)
       {
          uint8_t isHumanIndex = pClassData->validFrameNum;
          if (prob.humanProb >= CLASSIFIER_CONFIDENCE_SCORE)
          {
             // human detected
+            ESP_LOGD(TAG, "TLV classifier info: targetIndex=%d, human=%f, nonHuman=%f", i, prob.humanProb, prob.nonHumanProb);
             if (isHumanIndex < CLASSIFICATION_MAX_FRAMES)
             {
                pClassData->isHuman[isHumanIndex] = 1;
