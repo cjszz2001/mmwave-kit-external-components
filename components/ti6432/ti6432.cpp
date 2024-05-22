@@ -1,6 +1,8 @@
 #include "esphome/core/log.h"
 #include "ti6432.h"
 
+#include "freertos/timers.h"
+
 #include <utility>
 #ifdef USE_NUMBER
 #include "esphome/components/number/number.h"
@@ -13,6 +15,11 @@ namespace esphome {
 namespace ti6432 {
 
 static const char *const TAG = "ti6432";
+
+TimerHandle_t tracking_timer[MAX_TARGET_NUMBER];
+
+static void timer_call_back(TimerHandle_t xTimer);
+static int8_t resetTarget = UNKNOWN_TARGET;
 
 // Prints the component's configuration data. dump_config() prints all of the component's configuration
 // items in an easy-to-read format, including the configuration key-value pairs.
@@ -113,6 +120,44 @@ void TI6432Component::setup() {
 //      class.targetId = UNKNOWN_TARGET;
 //      memset(class.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
 //   }
+
+  for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
+  {
+     tracking_timer[i] = xTimerCreate("tracking_timer", pdMS_TO_TICKS(TRACKING_TIMEOUT_MS), false, NULL, timer_call_back);
+     if( tracking_timer[i] == NULL )
+     {
+         /* The timer was not created. */
+         ESP_LOGE(TAG, "Tracking timer create failed. index=%d", i);
+     }
+     else
+     {
+        // initiate all timer ID to INVALID.
+        vTimerSetTimerID( tracking_timer[i], (void *)INVALID_TIMER_ID );
+     }
+  }
+
+}
+
+void timer_call_back(TimerHandle_t xTimer)
+{
+   uint32_t targetId = (uint32_t)pvTimerGetTimerID(xTimer);
+   ESP_LOGI(TAG, "Target ID %d disappear...", targetId);
+   vTimerSetTimerID( xTimer, (void *)INVALID_TIMER_ID );
+
+   resetTarget = targetId;
+}
+
+bool findAvailableTimerIndex(uint8_t *index)
+{
+   for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
+   {
+      if ((uint32_t)pvTimerGetTimerID(tracking_timer[i]) == INVALID_TIMER_ID )
+      {
+         *index = i;
+         return true;
+      }
+   }
+   return false;
 }
 
 // Timed polling of radar data
@@ -230,6 +275,29 @@ void TI6432Component::loop() {
       /////this->class_outcome.clear();
 
       // break; // break from while, to avoid blocking other tasks.
+    }
+
+    if (resetTarget != UNKNOWN_TARGET)
+    {
+       // one of the target disappear, clear it out 
+       for (auto &outcome : this->class_outcome)
+       {
+          if (outcome.targetId == resetTarget)
+          {
+             // found the target
+             if (outcome.reported)
+             {
+                // this target should be reported already
+                this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+                this->custom_spatial_motion_value_sensor_->publish_state(0);
+                ESP_LOGD(TAG, "Loop: remove reported status for targetId=%d", outcome.targetId);   
+                
+                outcome.reported = false;     
+                break; 
+             }
+          }  
+       }
+       resetTarget = UNKNOWN_TARGET;
     }
   } //end of while
 }
@@ -417,6 +485,12 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
             found = true;
             buf[i] = UNKNOWN_TARGET; //remove this target from buf
             ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", it->targetId);
+
+            if (it->reported)
+            {
+               // this target is reported, refresh its timer
+               xTimerReset(tracking_timer[it->timerIndex], 0);
+            }
             break;
          }
       }
@@ -427,7 +501,10 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
             // this target was reported, clear out reported status
             this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
             this->custom_spatial_motion_value_sensor_->publish_state(0);
-            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", it->targetId);         
+            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", it->targetId);  
+
+            xTimerStop(tracking_timer[it->timerIndex], 0);  
+            vTimerSetTimerID( tracking_timer[it->timerIndex], (void *)INVALID_TIMER_ID );     
          }
          ESP_LOGD(TAG, "TLV target list: delete targetId=%d", it->targetId);
          // this target not existed any more, remove all its data
@@ -451,6 +528,7 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          newClass.targetId      = buf[i];
          newClass.validFrameNum = 0;
          newClass.reported      = false;
+         newClass.timerIndex    = 0xff;
          memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
          this->class_outcome.push_back(newClass);
          ESP_LOGD(TAG, "TLV target list: add new targetId=%d", buf[i]);
@@ -571,6 +649,19 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+
+                  if (!pClassData->reported)
+                  {
+                     // first time to report this target
+                     // start timer to monitor disappear
+                     uint8_t timerIndex;
+                     if(findAvailableTimerIndex(&timerIndex))
+                     {
+                        xTimerStart(tracking_timer[timerIndex], 0);
+                        pClassData->timerIndex = timerIndex;
+                        vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
+                     }
+                  }
                   pClassData->reported = true;
                }
                // no need to report non-human, because it should be reported before
@@ -608,6 +699,18 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+                  if (!pClassData->reported)
+                  {
+                     // first time to report this target
+                     // start timer to monitor disappear
+                     uint8_t timerIndex;
+                     if(findAvailableTimerIndex(&timerIndex))
+                     {
+                        xTimerStart(tracking_timer[timerIndex], 0);
+                        pClassData->timerIndex = timerIndex;
+                        vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
+                     }
+                  }
                   pClassData->reported = true;
                }
                // no need to report human, because it should be reported before

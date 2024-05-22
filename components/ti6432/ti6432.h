@@ -47,6 +47,8 @@ static const uint32_t MESSAGE_MAX_V_SIZE             = TLV_MAX_SIZE - sizeof(Mmw
 static const uint32_t CLASSIFICATION_MAX_FRAMES      = 5; //use 5 frames data to decide human/non-human
 static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at the same time.
 static const int8_t   UNKNOWN_TARGET                 = 0x55; // preset value to init buffer
+static const uint32_t TRACKING_TIMEOUT_MS            = 2 * 1000; //
+static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 enum {
   FRAME_IN_IDLE,
   FRAME_IN_HEADER,
@@ -167,6 +169,7 @@ class TI6432Component : public Component,
      uint8_t targetId;      // UNKNOWN_TARGET init value
      uint8_t validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
      bool    reported;      // this target human/non-human is reported or not, if reported already, when target disappeared, report needs to be clear out as well.
+     uint8_t timerIndex;    // index in tracking_timer array
      int8_t  isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
   } CLASSIFICATION_DATA;
 
