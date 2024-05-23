@@ -86,13 +86,13 @@ void TI6432Component::setup() {
 //   ESP_LOGCONFIG(TAG, "uart_settings is 1250000");
 //   this->check_uart_settings(1250000);
 
-  if (this->custom_mode_number_ != nullptr) {
-    this->custom_mode_number_->publish_state(0);  // Zero out the custom mode
-  }
-  if (this->custom_mode_num_sensor_ != nullptr) {
-    this->custom_mode_num_sensor_->publish_state(0);
-  }
-  this->set_custom_end_mode();
+//   if (this->custom_mode_number_ != nullptr) {
+//     this->custom_mode_number_->publish_state(0);  // Zero out the custom mode
+//   }
+//   if (this->custom_mode_num_sensor_ != nullptr) {
+//     this->custom_mode_num_sensor_->publish_state(0);
+//   }
+//   this->set_custom_end_mode();
 
   this->pos_in_frame = FRAME_IN_IDLE;
 
@@ -101,7 +101,8 @@ void TI6432Component::setup() {
 
   this->reported_human_number = 0;
   this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-
+  this->custom_spatial_static_value_sensor_->publish_state(255);
+  this->custom_spatial_motion_value_sensor_->publish_state(0);
   this->class_outcome.clear();
 
   for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
@@ -244,7 +245,7 @@ void TI6432Component::loop() {
     if (this->pos_in_frame == FRAME_TO_RESET)
     {
       yield();
-      
+
       // error happens, or frame is ended
       ESP_LOGD(TAG, "Reset to prepare for next frame.");
       this->pos_in_frame            = FRAME_IN_IDLE;     
