@@ -608,6 +608,13 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
 
       prob.humanProb    = (float)data[i*2+1] / 128;
       prob.nonHumanProb = (float)data[i*2]   / 128;
+      
+      //publish probability value for index 0 only, for debug purpose
+      if (i==0)
+      {
+         this->custom_mode_num_sensor_->publish_state(prob.humanProb);
+      }
+      
       if (prob.humanProb != 0.5)
       {
          uint8_t isHumanIndex = pClassData->validFrameNum;

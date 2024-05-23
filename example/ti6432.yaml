@@ -49,89 +49,31 @@ uart:
   stop_bits: 1
 
 ti6432:
-#seeed_mr24hpc1:
   id: my_ti6432
 
-text_sensor:
-  - platform: ti6432
-#   heart_beat:
-#      name: "Heartbeat"
-#    product_model:
-#      name: "Product Model"
-#    product_id:
-#      name: "Product ID"
-#    hardware_model:
-#      name: "Hardware Model"
-#    hardware_version:
-#      name: "Hardware Version"
-#    keep_away:
-#      name: "Active Reporting Of Proximity"
-    motion_status:
-      name: "Motion Information"
-#    custom_mode_end:
-#      name: "Custom Mode Status"
-
-binary_sensor:
-  - platform: ti6432
-    has_target:
-      name: "Presence Information"
 
 sensor:
   - platform: ti6432
-    custom_presence_of_detection:
-      #name: "Static Distance"
-      name: "Zone 1 motion"
-    movement_signs:
-      #name: "Body Movement Parameter"
-      name: "Zone 2 motion"
-    custom_motion_distance:
-      #name: "Motion Distance"
-      name: "Zone 3 motion"
+#    custom_presence_of_detection:
+#      name: "Z1 presence"
+#    movement_signs:
+#      name: "Z2 presence"
+#    custom_motion_distance:
+#      name: "Z3 presence"
     custom_spatial_static_value:
-      name: "Existence Energy"
+      name: "Target ID"
     custom_spatial_motion_value:
-      name: "Motion Energy"
+      name: "Human Probability"
     custom_motion_speed:
-      name: "Motion Speed"
+      name: "Human Count"
     custom_mode_num:
-      name: "Current Custom Mode"
-
-switch:
-  - platform: ti6432
-    underly_open_function:
-      name: Underlying Open Function Info Output Switch
-
-button:
-  - platform: ti6432
-    restart:
-      name: "Module Restart"
-    custom_set_end:
-      name: "End Of Custom Mode Settings"
-
-select:
-  - platform: ti6432
-    scene_mode:
-      name: "Scene"
-    unman_time:
-      name: "Time For Entering No Person State (Standard Function)"
-    existence_boundary:
-      name: "Existence Boundary"
-    motion_boundary:
-      name: "Motion Boundary"
-
-number:
-  - platform: ti6432
-    sensitivity:
-      name: "Sensitivity"
-    custom_mode:
-      name: "Custom Mode"
-    existence_threshold:
-      name: "Existence Energy Threshold"
-    motion_threshold:
-      name: "Motion Energy Threshold"
-    motion_trigger:
-      name: "Motion Trigger Time"
-    motion_to_rest:
-      name: "Motion To Rest Time"
-    custom_unman_time:
-      name: "Time For Entering No Person State (Underlying Open Function)"    
+      name: "Human Prob in 317 (index 0)"
+      filters:
+        - filter_out: 0.5
+        - clamp:
+            min_value: 0
+            max_value: 1
+            ignore_out_of_range: true
+        - sliding_window_moving_average:
+            window_size: 5
+                  

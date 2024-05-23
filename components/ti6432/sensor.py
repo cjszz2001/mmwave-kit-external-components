@@ -56,7 +56,8 @@ CONFIG_SCHEMA = cv.Schema(
             icon="mdi:counter",
         ),
         cv.Optional(CONF_CUSTOM_MODE_NUM): sensor.sensor_schema(
-            icon="mdi:counter",
+            icon="mdi:percent",
+            accuracy_decimals=2,
         ),
     }
 )
