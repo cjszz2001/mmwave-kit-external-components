@@ -24,33 +24,36 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_TI6432_ID): cv.use_id(TI6432Component),
         cv.Optional(CONF_CUSTOM_PRESENCE_OF_DETECTION): sensor.sensor_schema(
-            device_class=DEVICE_CLASS_DISTANCE,
-            unit_of_measurement=UNIT_METER,
-            accuracy_decimals=2,  # Specify the number of decimal places
-            icon="mdi:signal-distance-variant",
+            #device_class=DEVICE_CLASS_DISTANCE,
+            #unit_of_measurement=UNIT_METER,
+            #accuracy_decimals=2,  # Specify the number of decimal places
+            #icon="mdi:signal-distance-variant",
+            icon="mdi:human-greeting-variant",
         ),
         cv.Optional(CONF_MOVEMENT_SIGNS): sensor.sensor_schema(
-            state_class=STATE_CLASS_MEASUREMENT,
+            #state_class=STATE_CLASS_MEASUREMENT,
             icon="mdi:human-greeting-variant",
         ),
         cv.Optional(CONF_CUSTOM_MOTION_DISTANCE): sensor.sensor_schema(
-            unit_of_measurement=UNIT_METER,
-            accuracy_decimals=2,
-            icon="mdi:signal-distance-variant",
+            #unit_of_measurement=UNIT_METER,
+            #accuracy_decimals=2,
+            #icon="mdi:signal-distance-variant",
+            icon="mdi:human-greeting-variant",
         ),
         cv.Optional(CONF_CUSTOM_SPATIAL_STATIC_VALUE): sensor.sensor_schema(
-            device_class=DEVICE_CLASS_ENERGY,
-            icon="mdi:counter",
+            #device_class=DEVICE_CLASS_ENERGY,
+            icon="mdi:numeric",
         ),
         cv.Optional(CONF_CUSTOM_SPATIAL_MOTION_VALUE): sensor.sensor_schema(
-            device_class=DEVICE_CLASS_ENERGY,
-            icon="mdi:counter",
+            #device_class=DEVICE_CLASS_ENERGY,
+            icon="mdi:percent",
         ),
         cv.Optional(CONF_CUSTOM_MOTION_SPEED): sensor.sensor_schema(
-            unit_of_measurement="m/s",
-            device_class=DEVICE_CLASS_SPEED,
-            accuracy_decimals=2,
-            icon="mdi:run-fast",
+            unit_of_measurement="Persons",
+            #device_class=DEVICE_CLASS_SPEED,
+            #accuracy_decimals=2,
+            #icon="mdi:run-fast",
+            icon="mdi:counter",
         ),
         cv.Optional(CONF_CUSTOM_MODE_NUM): sensor.sensor_schema(
             icon="mdi:counter",
