@@ -233,7 +233,7 @@ void TI6432Component::loop() {
       {
          yield();
          //this frame is over
-         this->handle_frame();
+         //this->handle_frame();
          //prepare for next frame
          this->pos_in_frame = FRAME_TO_RESET;
       }
