@@ -279,6 +279,8 @@ void TI6432Component::loop() {
                 ESP_LOGD(TAG, "Loop: remove reported status for targetId=%d", outcome.targetId);   
                 
                 outcome.reported = false; 
+                outcome.sum      = 0;
+                memset(outcome.isHuman, 0, sizeof(outcome.isHuman));
 
                 this->reported_human_number --;
                 this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
@@ -480,6 +482,10 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
             {
                // this target is reported, refresh its timer
                xTimerReset(tracking_timer[it->timerIndex], 0);
+
+               this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
+               this->custom_spatial_motion_value_sensor_->publish_state(it->sum);
+               //ESP_LOGD(TAG, "TLV target list: human detected. targetId=%d, sum=%d", it->targetId, it->sum);
             }
             break;
          }
@@ -523,6 +529,7 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          newClass.validFrameNum = 0;
          newClass.reported      = false;
          newClass.timerIndex    = 0xff;
+         newClass.sum           = 0;
          memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
          this->class_outcome.push_back(newClass);
          ESP_LOGD(TAG, "TLV target list: add new targetId=%d", buf[i]);
@@ -650,6 +657,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
                   this->custom_spatial_motion_value_sensor_->publish_state(sum);
                   ESP_LOGD(TAG, "TLV classifier info: human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
+                  pClassData->sum = sum;
 
                   if (!pClassData->reported)
                   {
@@ -677,8 +685,9 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                   {
                      // this target WAS reported as human, but now it changes to non-human
                      this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
-                     this->custom_spatial_motion_value_sensor_->publish_state(0);
+                     this->custom_spatial_motion_value_sensor_->publish_state(sum);
                      ESP_LOGD(TAG, "TLV classifier info: targetId=%d change from human to non-human, sum=%d", pClassData->targetId, sum);  
+                     pClassData->sum = sum;
 
                      xTimerStop(tracking_timer[pClassData->timerIndex], 0);  
                      vTimerSetTimerID( tracking_timer[pClassData->timerIndex], (void *)INVALID_TIMER_ID );     

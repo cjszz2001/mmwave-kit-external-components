@@ -167,10 +167,11 @@ class TI6432Component : public Component,
 
   typedef struct 
   {
-     uint32_t targetId;      // UNKNOWN_TARGET init value
+     uint32_t targetId;     // UNKNOWN_TARGET init value
      uint8_t validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
      bool    reported;      // this target human/non-human is reported or not, if reported already, when target disappeared, report needs to be clear out as well.
      uint8_t timerIndex;    // index in tracking_timer array
+     int8_t  sum;           // sum of isHuman when it's full.
      int8_t  isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
   } CLASSIFICATION_DATA;
 
