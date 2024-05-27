@@ -205,6 +205,7 @@ class TI6432Component : public Component,
   void send_query_(uint8_t *query, size_t string_length);
 
   void handle_frame(void);
+  void handle_tlv(MESSAGE_TLV &tlv);
   void handle_ext_msg_enhanced_presence_indication(uint8_t *data, uint32_t length);
   void handle_ext_msg_target_list(uint8_t *data, uint32_t length);
   void handle_ext_msg_target_index(uint8_t *data, uint32_t length);

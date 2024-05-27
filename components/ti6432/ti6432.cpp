@@ -202,7 +202,7 @@ void TI6432Component::loop() {
          if (current_num_tlv >= this->frame_header.numTLVs)
          {
             // this frame is over
-            this->handle_frame();
+            //this->handle_frame();
             // prepare for next frame
             this->pos_in_frame = FRAME_TO_RESET;
             break;
@@ -228,6 +228,7 @@ void TI6432Component::loop() {
          // read in V
          this->read_big_data_from_uart(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
          this->message_tlv.push_back(this->current_message);
+         this->handle_tlv(this->current_message);
 
          current_num_tlv += 1;
          this->pos_in_frame = FRAME_IN_TL;
@@ -272,8 +273,6 @@ void TI6432Component::loop() {
       {
 
       }
-
-
    } // end of while
 
    if (resetTarget != UNKNOWN_TARGET)
@@ -310,54 +309,59 @@ void TI6432Component::handle_frame(void)
 {
    for (auto &tlv: this->message_tlv)
    {
-      switch (tlv.tl.type)
+      this->handle_tlv(tlv);
+   }
+}
+
+void TI6432Component::handle_tlv(MESSAGE_TLV &tlv)
+{
+   switch (tlv.tl.type)
+   {
+      case MMWDEMO_OUTPUT_EXT_MSG_ENHANCED_PRESENCE_INDICATION: // presence detection TLV, 315, 
       {
-         case MMWDEMO_OUTPUT_EXT_MSG_ENHANCED_PRESENCE_INDICATION: // presence detection TLV, 315, 
-         {
-            this->handle_ext_msg_enhanced_presence_indication(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_TARGET_LIST: // group tracker data, 308, 
-         {
-            this->handle_ext_msg_target_list(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_TARGET_INDEX: // group tracker data, 309
-         {
-            this->handle_ext_msg_target_index(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_CLASSIFIER_INFO: // classifier output, 317
-         {
-            this->handle_ext_msg_classifier_info(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_DETECTED_POINTS: // 301
-         {
-            this->handle_ext_msg_detected_points(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_RANGE_PROFILE_MAJOR: // 302
-         {
-            this->handle_ext_msg_range_profile_major(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_EXT_MSG_RANGE_PROFILE_MINOR: // 303
-         {
-            this->handle_ext_msg_range_profile_minor(tlv.v, tlv.tl.length);
-         }
-         break;
-         case MMWDEMO_OUTPUT_MSG_EXT_STATS: // 306
-         {
-            this->handle_msg_ext_stats(tlv.v, tlv.tl.length);
-         }
-         break;
-         default:
-         {
-            ESP_LOGD(TAG, "handle_frame: unknown TLV type:%d", tlv.tl.type);
-         }
-         break;
+         this->handle_ext_msg_enhanced_presence_indication(tlv.v, tlv.tl.length);
       }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_TARGET_LIST: // group tracker data, 308, 
+      {
+         this->handle_ext_msg_target_list(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_TARGET_INDEX: // group tracker data, 309
+      {
+         this->handle_ext_msg_target_index(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_CLASSIFIER_INFO: // classifier output, 317
+      {
+         this->handle_ext_msg_classifier_info(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_DETECTED_POINTS: // 301
+      {
+         this->handle_ext_msg_detected_points(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_RANGE_PROFILE_MAJOR: // 302
+      {
+         this->handle_ext_msg_range_profile_major(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_EXT_MSG_RANGE_PROFILE_MINOR: // 303
+      {
+         this->handle_ext_msg_range_profile_minor(tlv.v, tlv.tl.length);
+      }
+      break;
+      case MMWDEMO_OUTPUT_MSG_EXT_STATS: // 306
+      {
+         this->handle_msg_ext_stats(tlv.v, tlv.tl.length);
+      }
+      break;
+      default:
+      {
+         ESP_LOGD(TAG, "handle_tlv: unknown TLV type:%d", tlv.tl.type);
+      }
+      break;
    }
 }
 
