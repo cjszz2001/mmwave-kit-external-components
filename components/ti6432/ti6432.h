@@ -47,7 +47,7 @@ static const uint32_t MESSAGE_MAX_V_SIZE             = TLV_MAX_SIZE - sizeof(Mmw
 static const uint32_t CLASSIFICATION_MAX_FRAMES      = 5; //use 5 frames data to decide human/non-human
 static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at the same time.
 static const uint32_t UNKNOWN_TARGET                 = 0xFFFFFFFF; // preset value to init buffer
-static const uint32_t TRACKING_TIMEOUT_MS            = 2 * 1000; //
+static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 
 enum {

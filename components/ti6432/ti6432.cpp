@@ -233,22 +233,6 @@ void TI6432Component::loop() {
          this->pos_in_frame = FRAME_IN_TL;
       }
       break;
-      case FRAME_TO_RESET:
-      {
-         // error happens, or frame is ended
-         ESP_LOGD(TAG, "Reset to prepare for next frame.");
-         this->pos_in_frame = FRAME_IN_IDLE;
-         current_num_tlv = 0;
-         current_byte_in_sync_word = 0;
-         memset(&this->frame_header, 0, sizeof(this->frame_header));
-         memset(&this->current_message, 0, sizeof(this->current_message));
-         this->message_tlv.clear();
-
-         ///// temp code, to clear out all results for next frame
-         this->zone_presence.clear();
-         this->targets.clear();
-      }
-
       default:
          break;
       }
@@ -268,6 +252,28 @@ void TI6432Component::loop() {
             continue;
          }
       }
+      else if(this->pos_in_frame == FRAME_TO_RESET)
+      {
+         // error happens, or frame is ended
+         ESP_LOGD(TAG, "Reset to prepare for next frame.");
+         this->pos_in_frame = FRAME_IN_IDLE;
+         current_num_tlv = 0;
+         current_byte_in_sync_word = 0;
+         memset(&this->frame_header, 0, sizeof(this->frame_header));
+         memset(&this->current_message, 0, sizeof(this->current_message));
+         this->message_tlv.clear();
+
+         ///// temp code, to clear out all results for next frame
+         this->zone_presence.clear();
+         this->targets.clear();
+         break; // break from while loop
+      }
+      else
+      {
+
+      }
+
+
    } // end of while
 
    if (resetTarget != UNKNOWN_TARGET)
