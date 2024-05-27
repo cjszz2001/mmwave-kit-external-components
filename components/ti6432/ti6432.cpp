@@ -152,148 +152,153 @@ void TI6432Component::update_() {
 
 // main loop
 void TI6432Component::loop() {
-  uint8_t byte;
-  static uint8_t current_byte_in_sync_word = 0; 
-  static uint8_t current_num_tlv = 0;
-  const int max_line_length = 80;
-  static uint8_t buffer[max_line_length];
+   uint8_t byte;
+   static uint8_t current_byte_in_sync_word = 0;
+   static uint8_t current_num_tlv = 0;
 
-  // Is there data on the serial port
-  while (this->available()) 
-  {
-    
-   //  this->read_byte(&byte);
-   //  ESP_LOGD(TAG, "0x%x", byte);
-
-   //  memset(buffer, 0, max_line_length);
-   //  this->read_array_with_delay(buffer, max_line_length);
-   //  for (uint8_t i=0; i<max_line_length; i=i+4)
-   //  {
-   //    ESP_LOGD(TAG, "0x%x, 0x%x, 0x%x, 0x%x", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
-   //  }
-
-    switch (this->pos_in_frame)
-    {
-    case FRAME_IN_IDLE:
-    {
-      this->read_byte(&byte);
-      if (FRAME_HEADER_MAGIC_WORD_VALUE[current_byte_in_sync_word] == byte) 
+   // Is there data on the serial port
+   while (this->available())
+   {
+      switch (this->pos_in_frame)
       {
-         current_byte_in_sync_word += 1;
-      }
-      else
+      case FRAME_IN_IDLE:
       {
-         // if not matching current byte, see if it matches first byte
-         if (FRAME_HEADER_MAGIC_WORD_VALUE[0] == byte) 
+         this->read_byte(&byte);
+         if (FRAME_HEADER_MAGIC_WORD_VALUE[current_byte_in_sync_word] == byte)
          {
-            current_byte_in_sync_word = 1;
+            current_byte_in_sync_word += 1;
+         }
+         else
+         {
+            // if not matching current byte, see if it matches first byte
+            if (FRAME_HEADER_MAGIC_WORD_VALUE[0] == byte)
+            {
+               current_byte_in_sync_word = 1;
+            }
+         }
+         if (current_byte_in_sync_word == FRAME_MAGIC_WORD_LEN)
+         {
+            // whole sync word matched, start whole header
+            this->pos_in_frame = FRAME_IN_HEADER;
+            current_byte_in_sync_word = 0;
+            ESP_LOGD(TAG, "A new frame found!");
          }
       }
-      if(current_byte_in_sync_word == FRAME_MAGIC_WORD_LEN)
+      break;
+      case FRAME_IN_HEADER:
       {
-         // whole sync word matched, start whole header
-         this->pos_in_frame        = FRAME_IN_HEADER;
-         current_byte_in_sync_word = 0;
-         ESP_LOGD(TAG, "A new frame found!");
+         // read in whole frame header
+         this->read_array_with_delay(((uint8_t *)&(this->frame_header.version)), (FRAME_HEADER_LEN - FRAME_MAGIC_WORD_LEN));
+         ESP_LOGD(TAG, "Frame header read in, numTLVs==%d", this->frame_header.numTLVs);
+         if (this->frame_header.numTLVs > 0)
+         {
+            // there are TLVs following
+            this->pos_in_frame = FRAME_IN_TL;
+         }
       }
-    }
-    break;
-    case FRAME_IN_HEADER:
-    {
-      // read in whole frame header
-      this->read_array_with_delay(((uint8_t *)&(this->frame_header.version)), (FRAME_HEADER_LEN - FRAME_MAGIC_WORD_LEN));
-      ESP_LOGD(TAG, "Frame header read in, numTLVs==%d", this->frame_header.numTLVs);
-      if (this->frame_header.numTLVs > 0)
+      break;
+      case FRAME_IN_TL:
       {
-         // there are TLVs following
-         this->pos_in_frame = FRAME_IN_TLV;
+         if (current_num_tlv >= this->frame_header.numTLVs)
+         {
+            // this frame is over
+            this->handle_frame();
+            // prepare for next frame
+            this->pos_in_frame = FRAME_TO_RESET;
+            break;
+         }
+         memset((void *)(&this->current_message), 0, sizeof(this->current_message));
+         // read in TL
+         this->read_array_with_delay(((uint8_t *)&(this->current_message.tl)), sizeof(MmwDemo_output_message_tl));
+
+         if (this->current_message.tl.length <= MESSAGE_MAX_V_SIZE)
+         {
+            ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, this->current_message.tl.type, this->current_message.tl.length);
+            this->pos_in_frame = FRAME_IN_WAIT4V;
+         }
+         else
+         {
+            // length is invalid, skip this TLV
+            ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
+         }
       }
-    }
-    break;
-    case FRAME_IN_TLV:
-    {
-      MESSAGE_TLV current_message;
-      // read in TL
-      this->read_array_with_delay(((uint8_t *)&(current_message.tl)), sizeof(MmwDemo_output_message_tl));
-      
-      if (current_message.tl.length <= MESSAGE_MAX_V_SIZE)
+      break;
+      case FRAME_IN_V:
       {
-         ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
          // read in V
-         this->read_big_data_from_uart(((uint8_t *)&(current_message.v)), current_message.tl.length);
-         this->message_tlv.push_back(current_message);
+         this->read_big_data_from_uart(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
+         this->message_tlv.push_back(this->current_message);
+
+         current_num_tlv += 1;
+         this->pos_in_frame = FRAME_IN_TL;
       }
-      else
+      break;
+      case FRAME_TO_RESET:
       {
-         // length is invalid, skip this TLV
-         ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
+         // error happens, or frame is ended
+         ESP_LOGD(TAG, "Reset to prepare for next frame.");
+         this->pos_in_frame = FRAME_IN_IDLE;
+         current_num_tlv = 0;
+         current_byte_in_sync_word = 0;
+         memset(&this->frame_header, 0, sizeof(this->frame_header));
+         memset(&this->current_message, 0, sizeof(this->current_message));
+         this->message_tlv.clear();
+
+         ///// temp code, to clear out all results for next frame
+         this->zone_presence.clear();
+         this->targets.clear();
       }
-      current_num_tlv += 1;
-      if (current_num_tlv >= this->frame_header.numTLVs)
+
+      default:
+         break;
+      }
+
+      if (this->pos_in_frame == FRAME_IN_WAIT4V)
       {
-         yield();
-         //this frame is over
-         this->handle_frame();
-         //prepare for next frame
-         this->pos_in_frame = FRAME_TO_RESET;
+         if (this->available() < this->current_message.tl.length)
+         {
+            // UART not ready for all the data yet, wait for next round
+            // break from while loop
+            break;
+         }
+         else
+         {
+            // UART data is ready
+            this->pos_in_frame = FRAME_IN_V;
+            continue;
+         }
       }
-    }
-    break;
-    default:
-    break;
-    }
-    if (this->pos_in_frame == FRAME_TO_RESET)
-    {
-      yield();
+   } // end of while
 
-      // error happens, or frame is ended
-      ESP_LOGD(TAG, "Reset to prepare for next frame.");
-      this->pos_in_frame            = FRAME_IN_IDLE;     
-      current_num_tlv               = 0;
-      current_byte_in_sync_word     = 0;
-      memset(&this->frame_header, 0, sizeof(this->frame_header));
-      this->message_tlv.clear();
+   if (resetTarget != UNKNOWN_TARGET)
+   {
+      // one of the target disappear, clear it out
+      for (auto &outcome : this->class_outcome)
+      {
+         if (outcome.targetId == resetTarget)
+         {
+            // found the target
+            if (outcome.reported)
+            {
+               // this target should be reported already
+               this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+               this->custom_spatial_motion_value_sensor_->publish_state(0);
+               ESP_LOGD(TAG, "Loop: remove reported status for targetId=%d", outcome.targetId);
 
-      ///// temp code, to clear out all results for next frame
-      this->zone_presence.clear();
-      this->targets.clear();
-      /////this->indexes.clear();
-      /////this->class_outcome.clear();
+               outcome.reported = false;
+               outcome.sum = 0;
+               memset(outcome.isHuman, 0, sizeof(outcome.isHuman));
 
-      // break; // break from while, to avoid blocking other tasks.
-    }
-
-    if (resetTarget != UNKNOWN_TARGET)
-    {
-       // one of the target disappear, clear it out 
-       for (auto &outcome : this->class_outcome)
-       {
-          if (outcome.targetId == resetTarget)
-          {
-             // found the target
-             if (outcome.reported)
-             {
-                // this target should be reported already
-                this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
-                this->custom_spatial_motion_value_sensor_->publish_state(0);
-                ESP_LOGD(TAG, "Loop: remove reported status for targetId=%d", outcome.targetId);   
-                
-                outcome.reported = false; 
-                outcome.sum      = 0;
-                memset(outcome.isHuman, 0, sizeof(outcome.isHuman));
-
-                this->reported_human_number --;
-                this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-                ESP_LOGD(TAG, "Loop: reported_human_number=%d", this->reported_human_number);    
-                break; 
-             }
-          }  
-       }
-       resetTarget = UNKNOWN_TARGET;
-    }
-  } //end of while
+               this->reported_human_number--;
+               this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+               ESP_LOGD(TAG, "Loop: reported_human_number=%d", this->reported_human_number);
+               break;
+            }
+         }
+      }
+      resetTarget = UNKNOWN_TARGET;
+   }
 }
-
 
 void TI6432Component::handle_frame(void)
 {
@@ -676,28 +681,6 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                      this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
                      ESP_LOGD(TAG, "TLV classifier info: reported_human_number=%d", this->reported_human_number);
                   }
-
-               }
-               else if (sum < 0)
-               {
-                  // non-human detected
-                  if (pClassData->reported)
-                  {
-                     // this target WAS reported as human, but now it changes to non-human
-                     this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
-                     this->custom_spatial_motion_value_sensor_->publish_state(sum);
-                     ESP_LOGD(TAG, "TLV classifier info: targetId=%d change from human to non-human, sum=%d", pClassData->targetId, sum);  
-                     pClassData->sum = sum;
-
-                     xTimerStop(tracking_timer[pClassData->timerIndex], 0);  
-                     vTimerSetTimerID( tracking_timer[pClassData->timerIndex], (void *)INVALID_TIMER_ID );     
-                     pClassData->reported = false;
-                  
-                     this->reported_human_number --;
-                     this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-                     ESP_LOGD(TAG, "TLV classifier info: reported_human_number=%d", this->reported_human_number);
-                  }
-
                }
             }
          }
@@ -719,38 +702,36 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                pClassData->isHuman[CLASSIFICATION_MAX_FRAMES-1] = -1;
             }
 
-            //////remove below part
-            ////// do NOT report NON-human, only report human detection
-            // if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
-            // {
-            //    int8_t sum = 0;
-            //    for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
-            //    {
-            //       sum += pClassData->isHuman[frameNum];
-            //    }
-            //    if (sum < 0)
-            //    {
-            //       //overall, non-human detected, report
-            //       this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
-            //       this->custom_spatial_motion_value_sensor_->publish_state(sum);
-            //       ESP_LOGD(TAG, "TLV classifier info: non-human detected. targetId=%d, sum=%d", pClassData->targetId, sum);
-            //       if (!pClassData->reported)
-            //       {
-            //          // first time to report this target
-            //          // start timer to monitor disappear
-            //          uint8_t timerIndex;
-            //          if(findAvailableTimerIndex(&timerIndex))
-            //          {
-            //             xTimerStart(tracking_timer[timerIndex], 0);
-            //             pClassData->timerIndex = timerIndex;
-            //             vTimerSetTimerID( tracking_timer[timerIndex], (void *)(pClassData->targetId)); 
-            //          }
-            //       }
-            //       pClassData->reported = true;
-            //    }
-            //    // no need to report human, because it should be reported before
-            //    // only possible change is from human to non-human
-            // }
+            if (pClassData->validFrameNum >= CLASSIFICATION_MAX_FRAMES)
+            {
+               int8_t sum = 0;
+               for (uint8_t frameNum=0; frameNum<CLASSIFICATION_MAX_FRAMES; frameNum++)
+               {
+                  sum += pClassData->isHuman[frameNum];
+               }
+               if (sum < 0)
+               {
+                  // non-human detected
+                  if (pClassData->reported)
+                  {
+                     // this target WAS reported as human, but now it changes to non-human
+                     this->custom_spatial_static_value_sensor_->publish_state(pClassData->targetId);
+                     this->custom_spatial_motion_value_sensor_->publish_state(sum);
+                     ESP_LOGD(TAG, "TLV classifier info: targetId=%d change from human to non-human, sum=%d", pClassData->targetId, sum);  
+                     pClassData->sum = sum;
+
+                     xTimerStop(tracking_timer[pClassData->timerIndex], 0);  
+                     vTimerSetTimerID( tracking_timer[pClassData->timerIndex], (void *)INVALID_TIMER_ID );     
+                     pClassData->reported = false;
+                  
+                     this->reported_human_number --;
+                     this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+                     ESP_LOGD(TAG, "TLV classifier info: reported_human_number=%d", this->reported_human_number);
+                  }
+               }
+               // no need to report human, because it should be reported before
+               // only possible change is from human to non-human
+            }
          }
          else
          {

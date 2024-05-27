@@ -53,7 +53,9 @@ static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 enum {
   FRAME_IN_IDLE,
   FRAME_IN_HEADER,
-  FRAME_IN_TLV,
+  FRAME_IN_TL,
+  FRAME_IN_WAIT4V,
+  FRAME_IN_V,
   FRAME_TO_RESET, // error happened, reset to idle
 };
 
@@ -169,7 +171,7 @@ class TI6432Component : public Component,
   {
      uint32_t targetId;     // UNKNOWN_TARGET init value
      uint8_t validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
-     bool    reported;      // this target human/non-human is reported or not, if reported already, when target disappeared, report needs to be clear out as well.
+     bool    reported;      // this target is reported as HUMAN. (non-human will not affect this flag)
      uint8_t timerIndex;    // index in tracking_timer array
      int8_t  sum;           // sum of isHuman when it's full.
      int8_t  isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
@@ -187,6 +189,7 @@ class TI6432Component : public Component,
   uint32_t                        pos_in_frame;
   MmwDemo_output_message_header   frame_header;
   // uint8_t                         sg_frame_header_buf_[FRAME_HEADER_LEN];
+  MESSAGE_TLV                     current_message;
   std::vector<MESSAGE_TLV>        message_tlv;
 
   std::vector<uint8_t>            zone_presence;
