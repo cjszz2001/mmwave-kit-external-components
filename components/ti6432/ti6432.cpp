@@ -220,6 +220,7 @@ void TI6432Component::loop() {
          {
             // length is invalid, skip this TLV
             ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
+            this->pos_in_frame = FRAME_TO_RESET;
          }
       }
       break;
@@ -240,18 +241,12 @@ void TI6432Component::loop() {
 
       if (this->pos_in_frame == FRAME_IN_WAIT4V)
       {
-         if (this->available() < this->current_message.tl.length)
-         {
-            // UART not ready for all the data yet, wait for next round
-            // break from while loop
-            break;
-         }
-         else
+         if (this->available() >= this->current_message.tl.length)
          {
             // UART data is ready
             this->pos_in_frame = FRAME_IN_V;
-            continue;
          }
+         break; // break from while loop
       }
       else if(this->pos_in_frame == FRAME_TO_RESET)
       {
