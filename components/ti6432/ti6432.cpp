@@ -227,7 +227,8 @@ void TI6432Component::loop() {
       case FRAME_IN_V:
       {
          // read in V
-         this->read_big_data_from_uart(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
+         this->read_array(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
+         //this->read_big_data_from_uart(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
          this->message_tlv.push_back(this->current_message);
          this->handle_tlv(this->current_message);
 
@@ -388,16 +389,16 @@ void TI6432Component::read_big_data_from_uart(uint8_t *data, uint32_t length)
 
 void TI6432Component::read_array_with_delay(uint8_t *data, uint32_t length)
 {
-   uint32_t start_time = millis();
-   while (this->available() < length) 
-   {
-      if (millis() - start_time > 500) 
-      {
-         ESP_LOGE(TAG, "Reading from UART timed out at byte %u!", this->available());
-         return;
-      }
-      yield();
-   }
+   // uint32_t start_time = millis();
+   // while (this->available() < length) 
+   // {
+   //    if (millis() - start_time > 500) 
+   //    {
+   //       ESP_LOGE(TAG, "Reading from UART timed out at byte %u!", this->available());
+   //       return;
+   //    }
+   //    yield();
+   // }
    this->read_array(data, length);
 }
 
