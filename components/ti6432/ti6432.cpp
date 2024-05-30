@@ -575,6 +575,13 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
          this->custom_mode_num_sensor_->publish_state(prob.humanProb);
       }
       
+      // when target is higher than 1.4 meter, treat it as a human
+      if (prob.humanProb == 0.5 && pClassData->targetTracker.posZ >= 1.4)
+      {
+         prob.humanProb    = CLASSIFIER_CONFIDENCE_SCORE;
+         prob.nonHumanProb = 1 - CLASSIFIER_CONFIDENCE_SCORE;
+      }
+
       if (prob.humanProb != 0.5)
       {
          uint8_t isHumanIndex = pClassData->validFrameNum;
