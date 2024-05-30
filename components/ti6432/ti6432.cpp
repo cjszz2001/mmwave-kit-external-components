@@ -146,8 +146,7 @@ bool findAvailableTimerIndex(uint8_t *index)
 
 // Timed polling of radar data
 void TI6432Component::update_() {
-  this->get_radar_output_information_switch();  // Query the key status every so often
-  this->poll_time_base_func_check_ = true;      // Query the base functionality information at regular intervals
+  // this->get_radar_output_information_switch();  // Query the key status every so often
 }
 
 // main loop
@@ -156,6 +155,7 @@ void TI6432Component::loop() {
    static uint8_t current_byte_in_sync_word = 0;
    static uint8_t current_num_tlv = 0;
 
+   ESP_LOGD(TAG, "loop start!!!");
    // Is there data on the serial port
    while (this->available())
    {
@@ -229,7 +229,13 @@ void TI6432Component::loop() {
          // read in V
          this->read_array(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
          //this->read_big_data_from_uart(((uint8_t *)&(this->current_message.v)), this->current_message.tl.length);
-         this->message_tlv.push_back(this->current_message);
+         
+         this->pos_in_frame = FRAME_IN_WAIT4HANDLE;
+      }
+      break;
+      case FRAME_IN_HANDLE:
+      {
+         // this->message_tlv.push_back(this->current_message);
          this->handle_tlv(this->current_message);
 
          current_num_tlv += 1;
@@ -249,6 +255,11 @@ void TI6432Component::loop() {
          }
          break; // break from while loop
       }
+      else if (this->pos_in_frame == FRAME_IN_WAIT4HANDLE)
+      {
+         this->pos_in_frame = FRAME_IN_HANDLE;
+         break; //break from while loop
+      }
       else if(this->pos_in_frame == FRAME_TO_RESET)
       {
          // error happens, or frame is ended
@@ -258,11 +269,10 @@ void TI6432Component::loop() {
          current_byte_in_sync_word = 0;
          memset(&this->frame_header, 0, sizeof(this->frame_header));
          memset(&this->current_message, 0, sizeof(this->current_message));
-         this->message_tlv.clear();
+         ///this->message_tlv.clear();
 
          ///// temp code, to clear out all results for next frame
          this->zone_presence.clear();
-         this->targets.clear();
          break; // break from while loop
       }
       else
@@ -299,14 +309,16 @@ void TI6432Component::loop() {
       }
       resetTarget = UNKNOWN_TARGET;
    }
+
+   ESP_LOGD(TAG, "loop: end!!!");
 }
 
 void TI6432Component::handle_frame(void)
 {
-   for (auto &tlv: this->message_tlv)
-   {
-      this->handle_tlv(tlv);
-   }
+   // for (auto &tlv: this->message_tlv)
+   // {
+   //    this->handle_tlv(tlv);
+   // }
 }
 
 void TI6432Component::handle_tlv(MESSAGE_TLV &tlv)

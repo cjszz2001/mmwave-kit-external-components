@@ -56,6 +56,8 @@ enum {
   FRAME_IN_TL,
   FRAME_IN_WAIT4V,
   FRAME_IN_V,
+  FRAME_IN_WAIT4HANDLE,
+  FRAME_IN_HANDLE,
   FRAME_TO_RESET, // error happened, reset to idle
 };
 
@@ -194,13 +196,12 @@ class TI6432Component : public Component,
   std::vector<MESSAGE_TLV>        message_tlv;
 
   std::vector<uint8_t>            zone_presence;
-  std::vector<trackerProc_Target> targets;
   //std::vector<uint8_t>            indexes;
   //std::vector<CLASS_OUTCOME>      class_outcome;
   std::vector<CLASSIFICATION_DATA>  class_outcome;
   int8_t                            reported_human_number;
 
-  bool poll_time_base_func_check_;
+  // bool poll_time_base_func_check_;
 
   void update_();
   void send_query_(uint8_t *query, size_t string_length);
