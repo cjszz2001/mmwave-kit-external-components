@@ -325,7 +325,7 @@ void TI6432Component::handle_tlv(MESSAGE_TLV &tlv)
       break;
       case MMWDEMO_OUTPUT_EXT_MSG_TARGET_INDEX: // group tracker data, 309
       {
-         this->handle_ext_msg_target_index(tlv.v, tlv.tl.length);
+         //this->handle_ext_msg_target_index(tlv.v, tlv.tl.length);
       }
       break;
       case MMWDEMO_OUTPUT_EXT_MSG_CLASSIFIER_INFO: // classifier output, 317
@@ -465,145 +465,87 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       return;
    }
 
-   uint32_t buf[MAX_TARGET_NUMBER];
+   std::vector<CLASSIFICATION_DATA> prev_class_outcome = this->class_outcome; //copy over the whole old class_outcome
+
+   this->class_outcome.clear();
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
       trackerProc_Target oneTarget;
       memcpy((uint8_t *)&oneTarget, &data[i*sizeof(trackerProc_Target)], sizeof(trackerProc_Target));
-      this->targets.push_back(oneTarget);
-      /////todo: when to empty targets
       ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);
-      buf[i] = oneTarget.tid; // save for following handling
-   }
-
-   // for each target already existed in previous frames, check if it still exists in the new frame,
-   // if not found, remove the target from the list
-   for (auto it = this->class_outcome.begin(); it != this->class_outcome.end();)
-   {
+      
       bool found = false;
-      for (uint32_t i=0; i<numDetectedTargets; i++)
+      for (auto &outcome : prev_class_outcome)
       {
-         if (it->targetId == buf[i])
+         if (outcome.targetId == oneTarget.tid)
          {
+            // found existing target in class_outcome
             found = true;
-            buf[i] = UNKNOWN_TARGET; //remove this target from buf
-            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", it->targetId);
+            outcome.targetTracker = oneTarget;
+            this->class_outcome.push_back(outcome);
+            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", outcome.targetId);
 
-            if (it->reported)
+            if (outcome.reported)
             {
                // this target is reported, refresh its timer
-               xTimerReset(tracking_timer[it->timerIndex], 0);
+               xTimerReset(tracking_timer[outcome.timerIndex], 0);
 
-               this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
-               this->custom_spatial_motion_value_sensor_->publish_state(it->sum);
+               this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+               this->custom_spatial_motion_value_sensor_->publish_state(outcome.sum);
                //ESP_LOGD(TAG, "TLV target list: human detected. targetId=%d, sum=%d", it->targetId, it->sum);
             }
+            
+            // since this targetId is already found, clear it out from prev_class_outcome
+            // this is for easy handle the removed targets later
+            outcome.targetId = UNKNOWN_TARGET; 
             break;
          }
       }
-      if(!found)
-      {
-         if (it->reported)
-         {
-            // this target was reported, clear out reported status
-            this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
-            this->custom_spatial_motion_value_sensor_->publish_state(0);
-            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", it->targetId);  
-
-            xTimerStop(tracking_timer[it->timerIndex], 0);  
-            vTimerSetTimerID( tracking_timer[it->timerIndex], (void *)INVALID_TIMER_ID );
-
-            this->reported_human_number --;
-            this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-            ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
-         }
-         ESP_LOGD(TAG, "TLV target list: delete targetId=%d", it->targetId);
-         // this target not existed any more, remove all its data
-         it = this->class_outcome.erase(it);
-      }
-      else
-      {
-         ++it;
-      }
-   }
-
-   // until now, class_outcome removed non-existed targets from previous frames.
-   // next, add in new target IDs found in the new frame
-   for (uint32_t i=0; i<numDetectedTargets; i++)
-   {
-      if (buf[i] != UNKNOWN_TARGET)
+      if (!found)
       {
          // this is a new target
          CLASSIFICATION_DATA newClass;
 
-         newClass.targetId      = buf[i];
+         newClass.targetId      = oneTarget.tid;
+         newClass.targetTracker = oneTarget;
          newClass.validFrameNum = 0;
          newClass.reported      = false;
          newClass.timerIndex    = 0xff;
          newClass.sum           = 0;
          memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
          this->class_outcome.push_back(newClass);
-         ESP_LOGD(TAG, "TLV target list: add new targetId=%d", buf[i]);
+         ESP_LOGD(TAG, "TLV target list: add new targetId=%d", newClass.targetId);
+      }
+   }
+
+   for (auto &outcome : prev_class_outcome)
+   {
+      // if target removed in the new frame, 
+      // need to check if we need to stop timer in case it was reported
+      if (outcome.targetId != UNKNOWN_TARGET)
+      {
+         // all found targets were set to UNKNOWN_TARGET
+         // so in this case, this target was not found in the new frame
+         if (outcome.reported)
+         {
+            // this target was reported, clear out reported status
+            this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+            this->custom_spatial_motion_value_sensor_->publish_state(0);
+            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", outcome.targetId);  
+
+            xTimerStop(tracking_timer[outcome.timerIndex], 0);  
+            vTimerSetTimerID( tracking_timer[outcome.timerIndex], (void *)INVALID_TIMER_ID );
+
+            this->reported_human_number --;
+            this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+            ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
+         }
       }
    }
 }
 
 void TI6432Component::handle_ext_msg_target_index(uint8_t *data, uint32_t length)
 {
-   // // Number of Points x 1 Byte
-   // // Contains target ID, allocating every point to a specific target or no target
-   // if (length > MAX_TARGET_NUMBER)
-   // {
-   //    ESP_LOGE(TAG, "TLV target index: too many targets (%d)", length);
-   //    return;
-   // }
-   // uint8_t buf[MAX_TARGET_NUMBER];
-   
-   // memcpy(buf, data, length); //copy over, so we can change
-
-   // // for each target already existed in previous frames, check if it still exists in the new frame,
-   // // if not found, remove the target from the list
-   // for (auto it = this->class_outcome.begin(); it != this->class_outcome.end();)
-   // {
-   //    bool found = false;
-   //    for (uint32_t i=0; i<length; i++)
-   //    {
-   //       if (it->targetId == buf[i])
-   //       {
-   //          found = true;
-   //          buf[i] = UNKNOWN_TARGET; //remove this target from buf
-   //          ESP_LOGD(TAG, "TLV target index: found existing targetId=%d", it->targetId);
-   //          break;
-   //       }
-   //    }
-   //    if(!found)
-   //    {
-   //       ESP_LOGD(TAG, "TLV target index: delete targetId=%d", it->targetId);
-   //       // this target not existed any more, remove all its data
-   //       it = this->class_outcome.erase(it);
-   //    }
-   //    else
-   //    {
-   //       ++it;
-   //    }
-   // }
-
-   // // until now, class_outcome removed non-existed targets from previous frames.
-   // // next, add in new target IDs found in the new frame
-   // for (uint32_t i=0; i<length; i++)
-   // {
-   //    if (buf[i] != UNKNOWN_TARGET)
-   //    {
-   //       // this is a new target
-   //       CLASSIFICATION_DATA newClass;
-
-   //       newClass.targetId = buf[i];
-   //       newClass.validFrameNum = 0;
-   //       memset(newClass.isHuman, 0, CLASSIFICATION_MAX_FRAMES);
-   //       this->class_outcome.push_back(newClass);
-   //       ESP_LOGD(TAG, "TLV target index: add new targetId=%d", buf[i]);
-   //    }
-   // }
 }
 
 void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t length)
