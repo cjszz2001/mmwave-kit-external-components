@@ -492,27 +492,29 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);
       
       bool found = false;
-      for (auto it = prev_class_outcome.begin(); it != prev_class_outcome.end();)
+      for (auto &outcome : prev_class_outcome)
       {
-         if (it->targetId == oneTarget.tid)
+         if (outcome.targetId == oneTarget.tid)
          {
             // found existing target in class_outcome
             found = true;
-            it->targetTracker = oneTarget;
-            this->class_outcome.push_back(*it);
-            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", it->targetId);
+            outcome.targetTracker = oneTarget;
+            this->class_outcome.push_back(outcome);
+            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", outcome.targetId);
 
-            if (it->reported)
+            if (outcome.reported)
             {
                // this target is reported, refresh its timer
-               xTimerReset(tracking_timer[it->timerIndex], 0);
+               xTimerReset(tracking_timer[outcome.timerIndex], 0);
 
-               this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
-               this->custom_spatial_motion_value_sensor_->publish_state(it->sum);
+               this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+               this->custom_spatial_motion_value_sensor_->publish_state(outcome.sum);
                //ESP_LOGD(TAG, "TLV target list: human detected. targetId=%d, sum=%d", it->targetId, it->sum);
             }
-
-            prev_class_outcome.erase(it);
+            
+            // since this targetId is already found, clear it out from prev_class_outcome
+            // this is for easy handle the removed targets later
+            outcome.targetId = UNKNOWN_TARGET; 
             break;
          }
       }
@@ -535,22 +537,26 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
 
    for (auto &outcome : prev_class_outcome)
    {
-      // all found targets were removed from prev_class_outcome
-      // so all targets now are old ones from previous frame
-      // in case they were reported, stop the timer
-      if (outcome.reported)
+      // if target removed in the new frame, 
+      // need to check if we need to stop timer in case it was reported
+      if (outcome.targetId != UNKNOWN_TARGET)
       {
-         // this target was reported, clear out reported status
-         this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
-         this->custom_spatial_motion_value_sensor_->publish_state(0);
-         ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", outcome.targetId);  
+         // all found targets were set to UNKNOWN_TARGET
+         // so in this case, this target was not found in the new frame
+         if (outcome.reported)
+         {
+            // this target was reported, clear out reported status
+            this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+            this->custom_spatial_motion_value_sensor_->publish_state(0);
+            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", outcome.targetId);  
 
-         xTimerStop(tracking_timer[outcome.timerIndex], 0);  
-         vTimerSetTimerID( tracking_timer[outcome.timerIndex], (void *)INVALID_TIMER_ID );
+            xTimerStop(tracking_timer[outcome.timerIndex], 0);  
+            vTimerSetTimerID( tracking_timer[outcome.timerIndex], (void *)INVALID_TIMER_ID );
 
-         this->reported_human_number --;
-         this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-         ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
+            this->reported_human_number --;
+            this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+            ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
+         }
       }
    }
 }
