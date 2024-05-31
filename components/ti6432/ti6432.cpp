@@ -155,7 +155,9 @@ void TI6432Component::loop() {
    static uint8_t current_byte_in_sync_word = 0;
    static uint8_t current_num_tlv = 0;
 
+   uint32_t ms_time = millis();
    ESP_LOGD(TAG, "loop start!!!");
+
    // Is there data on the serial port
    while (this->available())
    {
@@ -222,6 +224,7 @@ void TI6432Component::loop() {
             ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
             this->pos_in_frame = FRAME_TO_RESET;
          }
+         ESP_LOGD(TAG, "time in TL=%d", millis() - ms_time);
       }
       break;
       case FRAME_IN_V:
@@ -235,8 +238,10 @@ void TI6432Component::loop() {
       break;
       case FRAME_IN_HANDLE:
       {
+
          // this->message_tlv.push_back(this->current_message);
          this->handle_tlv(this->current_message);
+         ESP_LOGD(TAG, "time in handle=%d", millis() - ms_time);
 
          current_num_tlv += 1;
          this->pos_in_frame = FRAME_IN_TL;
@@ -487,29 +492,27 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);
       
       bool found = false;
-      for (auto &outcome : prev_class_outcome)
+      for (auto it = prev_class_outcome.begin(); it != prev_class_outcome.end();)
       {
-         if (outcome.targetId == oneTarget.tid)
+         if (it->targetId == oneTarget.tid)
          {
             // found existing target in class_outcome
             found = true;
-            outcome.targetTracker = oneTarget;
-            this->class_outcome.push_back(outcome);
-            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", outcome.targetId);
+            it->targetTracker = oneTarget;
+            this->class_outcome.push_back(*it);
+            ESP_LOGD(TAG, "TLV target list: found existing targetId=%d", it->targetId);
 
-            if (outcome.reported)
+            if (it->reported)
             {
                // this target is reported, refresh its timer
-               xTimerReset(tracking_timer[outcome.timerIndex], 0);
+               xTimerReset(tracking_timer[it->timerIndex], 0);
 
-               this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
-               this->custom_spatial_motion_value_sensor_->publish_state(outcome.sum);
+               this->custom_spatial_static_value_sensor_->publish_state(it->targetId);
+               this->custom_spatial_motion_value_sensor_->publish_state(it->sum);
                //ESP_LOGD(TAG, "TLV target list: human detected. targetId=%d, sum=%d", it->targetId, it->sum);
             }
-            
-            // since this targetId is already found, clear it out from prev_class_outcome
-            // this is for easy handle the removed targets later
-            outcome.targetId = UNKNOWN_TARGET; 
+
+            prev_class_outcome.erase(it);
             break;
          }
       }
@@ -532,26 +535,22 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
 
    for (auto &outcome : prev_class_outcome)
    {
-      // if target removed in the new frame, 
-      // need to check if we need to stop timer in case it was reported
-      if (outcome.targetId != UNKNOWN_TARGET)
+      // all found targets were removed from prev_class_outcome
+      // so all targets now are old ones from previous frame
+      // in case they were reported, stop the timer
+      if (outcome.reported)
       {
-         // all found targets were set to UNKNOWN_TARGET
-         // so in this case, this target was not found in the new frame
-         if (outcome.reported)
-         {
-            // this target was reported, clear out reported status
-            this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
-            this->custom_spatial_motion_value_sensor_->publish_state(0);
-            ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", outcome.targetId);  
+         // this target was reported, clear out reported status
+         this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+         this->custom_spatial_motion_value_sensor_->publish_state(0);
+         ESP_LOGD(TAG, "TLV target list: remove reported status for targetId=%d", outcome.targetId);  
 
-            xTimerStop(tracking_timer[outcome.timerIndex], 0);  
-            vTimerSetTimerID( tracking_timer[outcome.timerIndex], (void *)INVALID_TIMER_ID );
+         xTimerStop(tracking_timer[outcome.timerIndex], 0);  
+         vTimerSetTimerID( tracking_timer[outcome.timerIndex], (void *)INVALID_TIMER_ID );
 
-            this->reported_human_number --;
-            this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-            ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
-         }
+         this->reported_human_number --;
+         this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
+         ESP_LOGD(TAG, "TLV target list: reported_human_number=%d", this->reported_human_number);     
       }
    }
 }
