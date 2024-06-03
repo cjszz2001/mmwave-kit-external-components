@@ -213,16 +213,15 @@ void TI6432Component::loop() {
          // read in TL
          this->read_array_with_delay(((uint8_t *)&(this->current_message.tl)), sizeof(MmwDemo_output_message_tl));
 
-         if (this->current_message.tl.length <= MESSAGE_MAX_V_SIZE)
+         if (this->current_message.tl.type > MMWDEMO_OUTPUT_MSG_MAX || this->current_message.tl.length > MESSAGE_MAX_V_SIZE)
          {
-            ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, this->current_message.tl.type, this->current_message.tl.length);
-            this->pos_in_frame = FRAME_IN_WAIT4V;
+            ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
+            this->pos_in_frame = FRAME_TO_RESET;
          }
          else
          {
-            // length is invalid, skip this TLV
-            ESP_LOGE(TAG, "skip Invalid TLV: number=%d, type=%d, length=%d", current_num_tlv, current_message.tl.type, current_message.tl.length);
-            this->pos_in_frame = FRAME_TO_RESET;
+            ESP_LOGD(TAG, "TLV: number=%d, type=%d, length=%d", current_num_tlv, this->current_message.tl.type, this->current_message.tl.length);
+            this->pos_in_frame = FRAME_IN_WAIT4V;
          }
          ESP_LOGD(TAG, "time in TL=%d", millis() - ms_time);
       }
@@ -489,9 +488,15 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
    {
       trackerProc_Target oneTarget;
       memcpy((uint8_t *)&oneTarget, &data[i*sizeof(trackerProc_Target)], sizeof(trackerProc_Target));
-      ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);
-      
+      if (oneTarget.tid >= MAX_TARGET_NUMBER)
+      {
+         // out of range Target ID, assume wrong data, to reduce handling time.
+         ESP_LOGD(TAG, "TLV target list: ignore wrong tid, targetIndex=%d, targetId=%d", i, oneTarget.tid);
+         continue;   
+      }
+
       bool found = false;
+      ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);      
       for (auto &outcome : prev_class_outcome)
       {
          if (outcome.targetId == oneTarget.tid)

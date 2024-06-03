@@ -49,6 +49,7 @@ static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at
 static const uint32_t UNKNOWN_TARGET                 = 0xFFFFFFFF; // preset value to init buffer
 static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
+static const uint32_t MMWDEMO_OUTPUT_MSG_MAX         = 1051; // max value of TLV type
 
 enum {
   FRAME_IN_IDLE,
