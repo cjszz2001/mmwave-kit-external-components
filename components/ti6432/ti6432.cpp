@@ -507,8 +507,8 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
                // this target is reported, refresh its timer
                xTimerReset(tracking_timer[outcome.timerIndex], 0);
 
-               this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
-               this->custom_spatial_motion_value_sensor_->publish_state(outcome.sum);
+               // this->custom_spatial_static_value_sensor_->publish_state(outcome.targetId);
+               // this->custom_spatial_motion_value_sensor_->publish_state(outcome.sum);
                //ESP_LOGD(TAG, "TLV target list: human detected. targetId=%d, sum=%d", it->targetId, it->sum);
             }
             
