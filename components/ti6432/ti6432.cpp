@@ -598,6 +598,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
       }
       
       // when target is higher than 1.4 meter, treat it as a human
+      ESP_LOGD(TAG, "TLV classifier info: target pos Z=%f", pClassData->targetTracker.posZ);
       if (prob.humanProb == 0.5 && pClassData->targetTracker.posZ >= 1.4)
       {
          prob.humanProb    = CLASSIFIER_CONFIDENCE_SCORE;
