@@ -46,10 +46,13 @@ static const uint32_t TLV_MAX_SIZE                   = 1024; // max size for a T
 static const uint32_t MESSAGE_MAX_V_SIZE             = TLV_MAX_SIZE - sizeof(MmwDemo_output_message_tl);
 static const uint32_t CLASSIFICATION_MAX_FRAMES      = 5; //use 5 frames data to decide human/non-human
 static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at the same time.
+static const uint32_t MAX_ZONE_NUMBER                = 5; //
 static const uint32_t UNKNOWN_TARGET                 = 0xFFFFFFFF; // preset value to init buffer
+static const uint32_t NOT_IN_A_ZONE                  = 0xFFFFFFFF; // 
 static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 static const uint32_t MMWDEMO_OUTPUT_MSG_MAX         = 1051; // max value of TLV type
+static const float    SENSOR_POS_Z                   = 1.6; 
 
 enum {
   FRAME_IN_IDLE,
@@ -162,7 +165,15 @@ class TI6432Component : public Component,
      MmwDemo_output_message_tl       tl;
      uint8_t                         v[MESSAGE_MAX_V_SIZE];
   } MESSAGE_TLV;
-
+  typedef struct 
+  {
+     float startX;
+     float endX;
+     float startY;
+     float endY;
+     float startZ;
+     float endZ;
+  } ZONE_BOUNDARY;
   typedef struct 
   {
      // set to 2 float value because NUM_CLASSES_IN_CLASSIFIER defined as 2
@@ -174,12 +185,18 @@ class TI6432Component : public Component,
   {
      uint32_t           targetId;     // UNKNOWN_TARGET init value
      trackerProc_Target targetTracker;
+     uint32_t           targetInZone;  // zone number if this target is in a zone
      uint8_t            validFrameNum; // how many frames are valid in isHuman array. range 0 - CLASSIFICATION_MAX_FRAMES
      bool               reported;      // this target is reported as HUMAN. (non-human will not affect this flag)
      uint8_t            timerIndex;    // index in tracking_timer array
      int8_t             sum;           // sum of isHuman when it's full.
      int8_t             isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
   } CLASSIFICATION_DATA;
+
+  static constexpr ZONE_BOUNDARY zoneBoundary[] = {
+     {-1, 1, 0, 5, 0, 3}
+//    ,{0, 1, 1, 2, 0, 3}
+  };
 
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_product_id_[PRODUCT_BUF_MAX_SIZE + 1];
@@ -200,7 +217,7 @@ class TI6432Component : public Component,
   //std::vector<uint8_t>            indexes;
   //std::vector<CLASS_OUTCOME>      class_outcome;
   std::vector<CLASSIFICATION_DATA>  class_outcome;
-  int8_t                            reported_human_number;
+  int8_t                            reported_human_number[MAX_ZONE_NUMBER];
 
   // bool poll_time_base_func_check_;
 
@@ -220,6 +237,7 @@ class TI6432Component : public Component,
 
   void read_big_data_from_uart(uint8_t *data, uint32_t length);
   void read_array_with_delay(uint8_t *data, uint32_t length);
+  bool isTargetInZone(trackerProc_Target &tracker, uint32_t *zoneNum);
 
  public:
   float get_setup_priority() const override { return esphome::setup_priority::LATE; }
