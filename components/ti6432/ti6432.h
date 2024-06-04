@@ -238,6 +238,7 @@ class TI6432Component : public Component,
   void read_big_data_from_uart(uint8_t *data, uint32_t length);
   void read_array_with_delay(uint8_t *data, uint32_t length);
   bool isTargetInZone(trackerProc_Target &tracker, uint32_t *zoneNum);
+  void report_human_in_zone(int32_t humanNum, uint32_t zoneNum);
 
  public:
   float get_setup_priority() const override { return esphome::setup_priority::LATE; }

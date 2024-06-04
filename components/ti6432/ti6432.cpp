@@ -50,8 +50,9 @@ void TI6432Component::dump_config() {
   LOG_SENSOR(" ", "Custom Spatial Static Sensor", this->custom_spatial_static_value_sensor_);  
 // human or non-human  
   LOG_SENSOR(" ", "Custom Spatial Motion Sensor", this->custom_spatial_motion_value_sensor_);
-// how many humans detected
+// how many humans detected in zone 1
   LOG_SENSOR(" ", "Custom Motion Speed Sensor", this->custom_motion_speed_sensor_);
+// how many humans detected in zone 2
   LOG_SENSOR(" ", "Custom Mode Num Sensor", this->custom_mode_num_sensor_);
 #endif
 #ifdef USE_SWITCH
@@ -85,14 +86,6 @@ void TI6432Component::setup() {
 //   ESP_LOGCONFIG(TAG, "uart_settings is 1250000");
 //   this->check_uart_settings(1250000);
 
-//   if (this->custom_mode_number_ != nullptr) {
-//     this->custom_mode_number_->publish_state(0);  // Zero out the custom mode
-//   }
-//   if (this->custom_mode_num_sensor_ != nullptr) {
-//     this->custom_mode_num_sensor_->publish_state(0);
-//   }
-//   this->set_custom_end_mode();
-
   this->pos_in_frame = FRAME_IN_IDLE;
 
   this->set_interval(8000, [this]() { this->update_(); });
@@ -100,9 +93,10 @@ void TI6432Component::setup() {
 
   //this->reported_human_number = 0;
   memset(this->reported_human_number, 0, sizeof(this->reported_human_number));
-  //this->custom_motion_speed_sensor_->publish_state(this->reported_human_number);
-  //this->custom_spatial_static_value_sensor_->publish_state(255);
-  //this->custom_spatial_motion_value_sensor_->publish_state(0);
+  this->custom_motion_speed_sensor_->publish_state(0);
+  this->custom_mode_num_sensor_->publish_state(0);
+  this->custom_spatial_static_value_sensor_->publish_state(255);
+  this->custom_spatial_motion_value_sensor_->publish_state(0);
   this->class_outcome.clear();
 
   for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
@@ -306,8 +300,8 @@ void TI6432Component::loop() {
                if(outcome.targetInZone != NOT_IN_A_ZONE)
                {
                   this->reported_human_number[outcome.targetInZone]--;
-                  this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[outcome.targetInZone]);
-                  ESP_LOGD(TAG, "Loop: reported_human_number[%d]=%d", outcome.targetInZone, this->reported_human_number[outcome.targetInZone]);
+                  this->report_human_in_zone(this->reported_human_number[outcome.targetInZone], outcome.targetInZone);
+
                   outcome.targetInZone = NOT_IN_A_ZONE;
                }
                break;
@@ -339,6 +333,24 @@ bool TI6432Component::isTargetInZone(trackerProc_Target &tracker, uint32_t *zone
       }
    }
    return false;
+}
+
+void TI6432Component::report_human_in_zone(int32_t humanNum, uint32_t zoneNum)
+{
+   if (zoneNum == 0)
+   {
+      this->custom_motion_speed_sensor_->publish_state(humanNum);
+      ESP_LOGD(TAG, "reported_human_number[0]=%d", humanNum);
+   }
+   else if (zoneNum == 1)
+   {
+      this->custom_mode_num_sensor_->publish_state(humanNum);
+      ESP_LOGD(TAG, "reported_human_number[1]=%d", humanNum);
+   }
+   else
+   {
+      // should not come here
+   }
 }
 
 void TI6432Component::handle_frame(void)
@@ -583,8 +595,7 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
             {
                // target was in a zone
                this->reported_human_number[outcome.targetInZone] --;
-               this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[outcome.targetInZone]);
-               ESP_LOGD(TAG, "TLV target list: reported_human_number[%d]=%d", outcome.targetInZone, this->reported_human_number[outcome.targetInZone]); 
+               this->report_human_in_zone(this->reported_human_number[outcome.targetInZone], outcome.targetInZone);
             }
          }
       }
@@ -615,12 +626,6 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
 
       prob.humanProb    = (float)data[i*2+1] / 128;
       prob.nonHumanProb = (float)data[i*2]   / 128;
-      
-      //publish probability value for index 0 only, for debug purpose
-      if (i==0)
-      {
-         this->custom_mode_num_sensor_->publish_state(prob.humanProb);
-      }
       
       // when target is higher than 1.4 meter, treat it as a human
       ESP_LOGD(TAG, "TLV classifier info: target pos Z=%f", pClassData->targetTracker.posZ);
@@ -686,8 +691,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                      {
                         pClassData->targetInZone = inZone;
                         this->reported_human_number[inZone] ++;
-                        this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[inZone]);
-                        ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", inZone, this->reported_human_number[inZone]);
+                        this->report_human_in_zone(this->reported_human_number[inZone], inZone);
                      }
                      else
                      {
@@ -711,8 +715,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                         {
                            // newly come into a zone
                            this->reported_human_number[inZone] ++;
-                           this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[inZone]);
-                           ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", inZone, this->reported_human_number[inZone]);
+                           this->report_human_in_zone(this->reported_human_number[inZone], inZone);
                            pClassData->targetInZone = inZone;
                         }
                      }
@@ -723,8 +726,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                         {
                            // not in a zone now
                            this->reported_human_number[pClassData->targetInZone] --;
-                           this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[pClassData->targetInZone]);
-                           ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", pClassData->targetInZone, this->reported_human_number[pClassData->targetInZone]);
+                           this->report_human_in_zone(this->reported_human_number[pClassData->targetInZone], pClassData->targetInZone);
                            pClassData->targetInZone = NOT_IN_A_ZONE;
                         }
                         else
@@ -737,11 +739,10 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                            else
                            {
                               this->reported_human_number[pClassData->targetInZone] --;
-                              this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[pClassData->targetInZone]);
-                              ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", pClassData->targetInZone, this->reported_human_number[pClassData->targetInZone]);
+                              this->report_human_in_zone(this->reported_human_number[pClassData->targetInZone], pClassData->targetInZone);
+
                               this->reported_human_number[inZone] ++;
-                              this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[inZone]);
-                              ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", inZone, this->reported_human_number[inZone]);
+                              this->report_human_in_zone(this->reported_human_number[inZone], inZone);
                               pClassData->targetInZone = inZone;
                            }
                         }
@@ -793,8 +794,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
                      if (pClassData->targetInZone != NOT_IN_A_ZONE)
                      {
                         this->reported_human_number[pClassData->targetInZone] --;
-                        this->custom_motion_speed_sensor_->publish_state(this->reported_human_number[pClassData->targetInZone]);
-                        ESP_LOGD(TAG, "TLV classifier info: reported_human_number[%d]=%d", pClassData->targetInZone, this->reported_human_number[pClassData->targetInZone]);
+                        this->report_human_in_zone(this->reported_human_number[pClassData->targetInZone], pClassData->targetInZone);
                         pClassData->targetInZone = NOT_IN_A_ZONE;
                      }
                   }
