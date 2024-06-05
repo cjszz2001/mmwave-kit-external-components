@@ -85,7 +85,6 @@ void TI6432Component::setup() {
   this->check_uart_settings(115200);
 //   ESP_LOGCONFIG(TAG, "uart_settings is 1250000");
 //   this->check_uart_settings(1250000);
-
   this->pos_in_frame = FRAME_IN_IDLE;
 
   this->set_interval(8000, [this]() { this->update_(); });
@@ -326,7 +325,8 @@ bool TI6432Component::isTargetInZone(trackerProc_Target &tracker, uint32_t *zone
    {
       if(  (x >= this->zoneBoundary[i].startX && x <= this->zoneBoundary[i].endX)
         && (y >= this->zoneBoundary[i].startY && y <= this->zoneBoundary[i].endY)
-        && (z >= this->zoneBoundary[i].startZ && z <= this->zoneBoundary[i].endZ) )
+        // && (z >= this->zoneBoundary[i].startZ && z <= this->zoneBoundary[i].endZ) 
+        )
       {
          *zoneNum = i;
          return true;
@@ -516,10 +516,6 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       ESP_LOGE(TAG, "TLV target list: too many targets (%d)", numDetectedTargets);
       return;
    }
-
-   std::vector<CLASSIFICATION_DATA> prev_class_outcome = this->class_outcome; //copy over the whole old class_outcome
-
-   this->class_outcome.clear();
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
       trackerProc_Target oneTarget;
@@ -528,8 +524,17 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       {
          // out of range Target ID, assume wrong data, to reduce handling time.
          ESP_LOGD(TAG, "TLV target list: ignore wrong tid, targetIndex=%d, targetId=%d", i, oneTarget.tid);
-         continue;   
+         return;   
       }
+   }
+
+   std::vector<CLASSIFICATION_DATA> prev_class_outcome = this->class_outcome; //copy over the whole old class_outcome
+
+   this->class_outcome.clear();
+   for (uint32_t i=0; i<numDetectedTargets; i++)
+   {
+      trackerProc_Target oneTarget;
+      memcpy((uint8_t *)&oneTarget, &data[i*sizeof(trackerProc_Target)], sizeof(trackerProc_Target));
 
       bool found = false;
       ESP_LOGD(TAG, "TLV target list: targetIndex=%d, targetId=%d", i, oneTarget.tid);      
@@ -628,6 +633,9 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
       prob.nonHumanProb = (float)data[i*2]   / 128;
       
       // when target is higher than 1.4 meter, treat it as a human
+
+      ESP_LOGD(TAG, "TLV classifier info: target pos X=%f", pClassData->targetTracker.posX);
+      ESP_LOGD(TAG, "TLV classifier info: target pos Y=%f", pClassData->targetTracker.posY);
       ESP_LOGD(TAG, "TLV classifier info: target pos Z=%f", pClassData->targetTracker.posZ);
       if (prob.humanProb == 0.5 && (pClassData->targetTracker.posZ+SENSOR_POS_Z) >= 1.4)
       {

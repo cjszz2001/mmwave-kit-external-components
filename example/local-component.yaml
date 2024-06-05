@@ -1,0 +1,160 @@
+esphome:
+  name: local-component
+  friendly_name: local-component
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  
+external_components:
+  # use all components from a local folder
+  - source:
+      type: local
+      path: my_components
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "w4rj8YQD7UWs4QfjctegO8gobmVWv9b7eUhGn3dU9Fs="
+
+ota:
+  password: "d68b49fd0aeab8ec84697b2aeb5ad9e3"
+
+#web_server:
+#  port: 80
+  
+wifi:
+  networks:
+  - ssid: !secret wifi_ssid
+    password: !secret wifi_password
+  - ssid: !secret wifi_IQ_ssid
+    password: !secret wifi_IQ_password
+
+#  # Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "Local-Component Fallback Hotspot"
+#    password: "EsDo2X9HpwcZ"
+
+captive_portal:
+uart:
+  id: uart_bus
+  baud_rate: 115200
+  #baud_rate: 1250000
+  rx_pin: 4
+  tx_pin: 5
+  parity: NONE
+  stop_bits: 1
+  rx_buffer_size: 4096
+
+ti6432:
+#seeed_mr24hpc1:
+  id: my_ti6432
+
+text_sensor:
+  - platform: ti6432
+#    heart_beat:
+#      name: "Heartbeat"
+#    product_model:
+#      name: "Product Model"
+#    product_id:
+#      name: "Product ID"
+#    hardware_model:
+#      name: "Hardware Model"
+#    hardware_version:
+#      name: "Hardware Version"
+#    keep_away:
+#      name: "Active Reporting Of Proximity"
+#    motion_status:
+#      name: "Motion Information"
+#    custom_mode_end:
+#      name: "Custom Mode Status"
+
+#binary_sensor:
+#  - platform: ti6432
+#    has_target:
+#      name: "Presence Information"
+
+switch:
+    - platform: gpio
+      id: light_zone1
+      name: "human in zone1"
+      pin: GPIO6
+      
+sensor:
+  - platform: ti6432
+#    custom_presence_of_detection:
+#      name: "Z1 presence"
+#    movement_signs:
+#      name: "Z2 presence"
+#    custom_motion_distance:
+#      name: "Z3 presence"
+    custom_spatial_static_value:
+      name: "Target ID"
+    custom_spatial_motion_value:
+      name: "Human Probability"
+    custom_motion_speed:
+      name: "Human Count in zone1"
+      filters:
+        - debounce: 1s
+      on_value_range:
+        - above : 0.2
+          then:
+            - switch.turn_on: light_zone1
+        - below : 0.1
+          then:
+            - switch.turn_off: light_zone1
+        
+    custom_mode_num:
+      name: "Human Prob in 317 (index 0)"
+      filters:
+        - filter_out: 0.5
+        - clamp:
+            min_value: 0
+            max_value: 1
+            ignore_out_of_range: true
+        - sliding_window_moving_average:
+            window_size: 5
+                  
+#switch:
+#  - platform: ti6432
+#    underly_open_function:
+#      name: Underlying Open Function Info Output Switch
+
+#button:
+#  - platform: ti6432
+#    restart:
+#      name: "Module Restart"
+#    custom_set_end:
+#      name: "End Of Custom Mode Settings"
+
+#select:
+#  - platform: ti6432
+#    scene_mode:
+#      name: "Scene"
+#    unman_time:
+#      name: "Time For Entering No Person State (Standard Function)"
+#    existence_boundary:
+#      name: "Existence Boundary"
+#    motion_boundary:
+#      name: "Motion Boundary"
+
+#number:
+#  - platform: ti6432
+#    sensitivity:
+#      name: "Sensitivity"
+#    custom_mode:
+#      name: "Custom Mode"
+#    existence_threshold:
+#      name: "Existence Energy Threshold"
+#    motion_threshold:
+#      name: "Motion Energy Threshold"
+#    motion_trigger:
+#      name: "Motion Trigger Time"
+#    motion_to_rest:
+#      name: "Motion To Rest Time"
+#    custom_unman_time:
+#      name: "Time For Entering No Person State (Underlying Open Function)"

@@ -45,14 +45,14 @@ static const uint8_t FRAME_MAX_TOTAL_TLV_NUMBER      = 16;  // *** temporary set
 static const uint32_t TLV_MAX_SIZE                   = 1024; // max size for a TL + V
 static const uint32_t MESSAGE_MAX_V_SIZE             = TLV_MAX_SIZE - sizeof(MmwDemo_output_message_tl);
 static const uint32_t CLASSIFICATION_MAX_FRAMES      = 5; //use 5 frames data to decide human/non-human
-static const uint32_t MAX_TARGET_NUMBER              = 10; //track 10 targets at the same time.
+static const uint32_t MAX_TARGET_NUMBER              = 5; //track 5 targets at the same time.
 static const uint32_t MAX_ZONE_NUMBER                = 5; //
 static const uint32_t UNKNOWN_TARGET                 = 0xFFFFFFFF; // preset value to init buffer
 static const uint32_t NOT_IN_A_ZONE                  = 0xFFFFFFFF; // 
 static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 static const uint32_t MMWDEMO_OUTPUT_MSG_MAX         = 1051; // max value of TLV type
-static const float    SENSOR_POS_Z                   = 1.6; 
+static const float    SENSOR_POS_Z                   = 2.0; 
 
 enum {
   FRAME_IN_IDLE,
@@ -194,7 +194,7 @@ class TI6432Component : public Component,
   } CLASSIFICATION_DATA;
 
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
-     {-1, 1, 0, 5, 0, 3}
+     {-1.5, 1.5, 1.0, 5.0, 0.0, 3.0}
 //    ,{0, 1, 1, 2, 0, 3}
   };
 
