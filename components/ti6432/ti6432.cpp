@@ -637,7 +637,7 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
       ESP_LOGD(TAG, "TLV classifier info: target pos X=%f", pClassData->targetTracker.posX);
       ESP_LOGD(TAG, "TLV classifier info: target pos Y=%f", pClassData->targetTracker.posY);
       ESP_LOGD(TAG, "TLV classifier info: target pos Z=%f", pClassData->targetTracker.posZ);
-      if (prob.humanProb == 0.5 && (pClassData->targetTracker.posZ+SENSOR_POS_Z) >= 1.4)
+      if (prob.humanProb == 0.5 && (pClassData->targetTracker.posZ+SENSOR_POS_Z) >= 0.6)
       {
          prob.humanProb    = CLASSIFIER_CONFIDENCE_SCORE;
          prob.nonHumanProb = 1 - CLASSIFIER_CONFIDENCE_SCORE;
