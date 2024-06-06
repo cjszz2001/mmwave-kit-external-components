@@ -194,8 +194,8 @@ class TI6432Component : public Component,
   } CLASSIFICATION_DATA;
 
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
-     {-1.5, 1.5, 1.0, 5.0, 0.0, 3.0}
-//    ,{0, 1, 1, 2, 0, 3}
+     {-1.5, 1.5, 1.0, 2.5, 0.0, 3.0}
+    ,{-1.5, 1.5, 3.5, 5, 0, 3}
   };
 
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
