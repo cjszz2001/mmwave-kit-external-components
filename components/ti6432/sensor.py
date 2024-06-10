@@ -19,6 +19,7 @@ CONF_CUSTOM_SPATIAL_STATIC_VALUE = "custom_spatial_static_value"
 CONF_CUSTOM_SPATIAL_MOTION_VALUE = "custom_spatial_motion_value"
 CONF_CUSTOM_MOTION_SPEED = "custom_motion_speed"
 CONF_CUSTOM_MODE_NUM = "custom_mode_num"
+CONF_HUMAN_ENTERED_IN_ROOM = "human_entered_in_room"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -59,6 +60,10 @@ CONFIG_SCHEMA = cv.Schema(
             unit_of_measurement="Persons",
             icon="mdi:counter",
         ),
+        cv.Optional(CONF_HUMAN_ENTERED_IN_ROOM): sensor.sensor_schema(
+            unit_of_measurement="Persons",
+            icon="mdi:counter",
+        ),
     }
 )
 
@@ -88,3 +93,6 @@ async def to_code(config):
     if custommodenum_config := config.get(CONF_CUSTOM_MODE_NUM):
         sens = await sensor.new_sensor(custommodenum_config)
         cg.add(ti6432_component.set_custom_mode_num_sensor(sens))
+    if humanenteredinroom_config := config.get(CONF_HUMAN_ENTERED_IN_ROOM):
+        sens = await sensor.new_sensor(humanenteredinroom_config)
+        cg.add(ti6432_component.set_human_entered_in_room_sensor(sens))
