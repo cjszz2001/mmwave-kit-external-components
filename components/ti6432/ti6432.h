@@ -135,6 +135,7 @@ class TI6432Component : public Component,
   SUB_SENSOR(custom_spatial_motion_value)
   SUB_SENSOR(custom_motion_speed)
   SUB_SENSOR(custom_mode_num)
+  SUB_SENSOR(human_entered_in_room)
 #endif
 #ifdef USE_SWITCH
   SUB_SWITCH(underly_open_function)
@@ -193,10 +194,19 @@ class TI6432Component : public Component,
      int8_t             isHuman[CLASSIFICATION_MAX_FRAMES]; // -1 not human, 1 human, 0 init value
   } CLASSIFICATION_DATA;
 
+  typedef struct 
+  {
+     float     entryY;
+  } ENTRY_COUNT_DATA;
+
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
      {-1.5, 1.5, 1.0, 2.5, 0.0, 3.0}
     ,{-1.5, 1.5, 3.5, 5, 0, 3}
   };
+
+  // entry zone used for counting people entering the room
+  // z coordinates don't matter
+  static constexpr ZONE_BOUNDARY entryZone = {-1.5, 1.5, 3.5, 5.0, 0.0, 3.0};
 
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_product_id_[PRODUCT_BUF_MAX_SIZE + 1];
@@ -218,6 +228,8 @@ class TI6432Component : public Component,
   //std::vector<CLASS_OUTCOME>      class_outcome;
   std::vector<CLASSIFICATION_DATA>  class_outcome;
   int8_t                            reported_human_number[MAX_ZONE_NUMBER];
+  int8_t                            human_count_in_room;
+  std::map<uint32_t, ENTRY_COUNT_DATA>     entry_targets;
 
   // bool poll_time_base_func_check_;
 
@@ -239,6 +251,9 @@ class TI6432Component : public Component,
   void read_array_with_delay(uint8_t *data, uint32_t length);
   bool isTargetInZone(trackerProc_Target &tracker, uint32_t *zoneNum);
   void report_human_in_zone(int32_t humanNum, uint32_t zoneNum);
+  bool isTargetInEntryZone(trackerProc_Target &tracker);
+  bool isTargetEntering(float y);
+  bool isTargetReportedAsHuman(uint32_t targetId);
 
  public:
   float get_setup_priority() const override { return esphome::setup_priority::LATE; }

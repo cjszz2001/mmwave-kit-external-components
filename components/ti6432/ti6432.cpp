@@ -54,6 +54,8 @@ void TI6432Component::dump_config() {
   LOG_SENSOR(" ", "Custom Motion Speed Sensor", this->custom_motion_speed_sensor_);
 // how many humans detected in zone 2
   LOG_SENSOR(" ", "Custom Mode Num Sensor", this->custom_mode_num_sensor_);
+// how many humans entered the room
+  LOG_SENSOR(" ", "Human entered in room", this->human_entered_in_room_sensor_);
 #endif
 #ifdef USE_SWITCH
   LOG_SWITCH(" ", "Underly Open Function Switch", this->underly_open_function_switch_);
@@ -96,7 +98,10 @@ void TI6432Component::setup() {
   this->custom_mode_num_sensor_->publish_state(0);
   this->custom_spatial_static_value_sensor_->publish_state(255);
   this->custom_spatial_motion_value_sensor_->publish_state(0);
+  this->human_entered_in_room_sensor_->publish_state(0);
   this->class_outcome.clear();
+  this->entry_targets.clear();
+  this->human_count_in_room = 0;
 
   for (uint8_t i=0; i<MAX_TARGET_NUMBER; i++)
   {
@@ -312,6 +317,32 @@ void TI6432Component::loop() {
    ESP_LOGD(TAG, "Loop:end.");
 }
 
+bool TI6432Component::isTargetInEntryZone(trackerProc_Target &tracker)
+{
+   float x = tracker.posX;
+   float y = tracker.posY;
+   float z = tracker.posZ;
+
+   if(  (x >= this->entryZone.startX && x <= this->entryZone.endX)
+     && (y >= this->entryZone.startY && y <= this->entryZone.endY)
+      // && (z >= this->entryZone.startZ && z <= this->entryZone.endZ) 
+      )
+   {
+      return true;
+   }
+   return false;
+}
+
+// return: true -- entering, false -- leaving
+bool TI6432Component::isTargetEntering(float y)
+{
+   if ( this->entryZone.endY - y < y - this->entryZone.startY)
+   {
+      return true;
+   }
+   return false;
+}
+
 // input : tracker: target coordinates
 // output: return: true -- in a zone; *zoneNum is the zone number
 //                 false -- not in a zone
@@ -330,6 +361,18 @@ bool TI6432Component::isTargetInZone(trackerProc_Target &tracker, uint32_t *zone
       {
          *zoneNum = i;
          return true;
+      }
+   }
+   return false;
+}
+
+bool TI6432Component::isTargetReportedAsHuman(uint32_t targetId)
+{
+   for(auto &oneClass : this->class_outcome)
+   {
+      if (oneClass.targetId == targetId)
+      {
+         return oneClass.reported;
       }
    }
    return false;
@@ -516,6 +559,8 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
       ESP_LOGE(TAG, "TLV target list: too many targets (%d)", numDetectedTargets);
       return;
    }
+
+   std::map<uint32_t, trackerProc_Target> targets_in_frame;
    for (uint32_t i=0; i<numDetectedTargets; i++)
    {
       trackerProc_Target oneTarget;
@@ -526,7 +571,9 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          ESP_LOGD(TAG, "TLV target list: ignore wrong tid, targetIndex=%d, targetId=%d", i, oneTarget.tid);
          return;   
       }
+      targets_in_frame.insert({oneTarget.tid, oneTarget});
    }
+
 
    std::vector<CLASSIFICATION_DATA> prev_class_outcome = this->class_outcome; //copy over the whole old class_outcome
 
@@ -605,6 +652,70 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
          }
       }
    }
+
+   // handle entry zone counting
+   // this is done after class_outcome is updated
+   for (auto &one_in_frame : targets_in_frame)
+   {
+      if(this->entry_targets.count(one_in_frame.first) != 0)
+      {
+         // this target already in entry zone
+         if (this->isTargetInEntryZone(one_in_frame.second))
+         {
+            //target remains in entry zone
+            continue;
+         }
+         else
+         {
+            // target just left entry zone
+            if (one_in_frame.second.posY < this->entryZone.startY)
+            {
+               // entered into the room
+               if (this->isTargetEntering(this->entry_targets[one_in_frame.first].entryY))
+               {
+                  //human coming from outside, passing entry zone, now inside the room
+                  if (isTargetReportedAsHuman(one_in_frame.first))
+                  {
+                     this->human_count_in_room ++;
+                     this->human_entered_in_room_sensor_->publish_state(this->human_count_in_room);
+                  }
+               }
+               else
+               {
+                  //human coming from inside room, now back to the room again
+               }
+            }
+            else if (one_in_frame.second.posY > this->entryZone.endY)
+            {
+               // went out the room
+               if (!this->isTargetEntering(this->entry_targets[one_in_frame.first].entryY))
+               {
+                  //human coming from inside room, passing entry zone, now outside the room
+                  if (isTargetReportedAsHuman(one_in_frame.first))
+                  {
+                     this->human_count_in_room --;
+                     this->human_entered_in_room_sensor_->publish_state(this->human_count_in_room);
+                  }
+               }
+               else
+               {
+                  //human coming from outside room, now back to outside again
+               }
+            }
+            this->entry_targets.erase(one_in_frame.first);
+         }
+      }
+      else
+      {
+         // target was not in entry zone
+         if (this->isTargetInEntryZone(one_in_frame.second))
+         {
+            // add new target in entry zone.
+            this->entry_targets.insert({one_in_frame.first, {one_in_frame.second.posY}});
+         }
+      }
+   }
+
 }
 
 void TI6432Component::handle_ext_msg_target_index(uint8_t *data, uint32_t length)
