@@ -372,7 +372,8 @@ bool TI6432Component::isTargetReportedAsHuman(uint32_t targetId)
    {
       if (oneClass.targetId == targetId)
       {
-         return oneClass.reported;
+         // return oneClass.reported;
+         return((oneClass.targetTracker.posZ + SENSOR_POS_Z >= 0.6) ? true : false);
       }
    }
    return false;
@@ -565,10 +566,14 @@ void TI6432Component::handle_ext_msg_target_list(uint8_t *data, uint32_t length)
    {
       trackerProc_Target oneTarget;
       memcpy((uint8_t *)&oneTarget, &data[i*sizeof(trackerProc_Target)], sizeof(trackerProc_Target));
-      if (oneTarget.tid >= MAX_TARGET_NUMBER)
+      if ( (oneTarget.tid >= MAX_TARGET_NUMBER)
+        || (oneTarget.posX > MAX_POS_X) || (oneTarget.posX < MIN_POS_X)
+        || (oneTarget.posY > MAX_POS_Y) || (oneTarget.posY < MIN_POS_Y)
+        || (oneTarget.posZ > MAX_POS_Z) || (oneTarget.posY < MIN_POS_Z)
+        )
       {
          // out of range Target ID, assume wrong data, to reduce handling time.
-         ESP_LOGD(TAG, "TLV target list: ignore wrong tid, targetIndex=%d, targetId=%d", i, oneTarget.tid);
+         ESP_LOGD(TAG, "TLV target list: wrong data, targetIndex=%d, targetId=%d", i, oneTarget.tid);
          return;   
       }
       targets_in_frame.insert({oneTarget.tid, oneTarget});
@@ -748,11 +753,11 @@ void TI6432Component::handle_ext_msg_classifier_info(uint8_t *data, uint32_t len
       ESP_LOGD(TAG, "TLV classifier info: target pos X=%f", pClassData->targetTracker.posX);
       ESP_LOGD(TAG, "TLV classifier info: target pos Y=%f", pClassData->targetTracker.posY);
       ESP_LOGD(TAG, "TLV classifier info: target pos Z=%f", pClassData->targetTracker.posZ);
-      if (prob.humanProb == 0.5 && (pClassData->targetTracker.posZ+SENSOR_POS_Z) >= 0.6)
-      {
-         prob.humanProb    = CLASSIFIER_CONFIDENCE_SCORE;
-         prob.nonHumanProb = 1 - CLASSIFIER_CONFIDENCE_SCORE;
-      }
+      // if (prob.humanProb == 0.5 && (pClassData->targetTracker.posZ+SENSOR_POS_Z) >= 0.6)
+      // {
+      //    prob.humanProb    = CLASSIFIER_CONFIDENCE_SCORE;
+      //    prob.nonHumanProb = 1 - CLASSIFIER_CONFIDENCE_SCORE;
+      // }
 
       if (prob.humanProb != 0.5)
       {

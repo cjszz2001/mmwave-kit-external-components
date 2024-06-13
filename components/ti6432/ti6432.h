@@ -53,6 +53,12 @@ static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 static const uint32_t MMWDEMO_OUTPUT_MSG_MAX         = 1051; // max value of TLV type
 static const float    SENSOR_POS_Z                   = 2.0; 
+static const float    MAX_POS_X                      = 4.0; 
+static const float    MIN_POS_X                      = -3.0; 
+static const float    MAX_POS_Y                      = 7.0; 
+static const float    MIN_POS_Y                      = 0.0; 
+static const float    MAX_POS_Z                      = 1.0; 
+static const float    MIN_POS_Z                      = -2.0; 
 
 enum {
   FRAME_IN_IDLE,
@@ -200,13 +206,14 @@ class TI6432Component : public Component,
   } ENTRY_COUNT_DATA;
 
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
-     {-1.5, 1.5, 1.0, 2.5, 0.0, 3.0}
-    ,{-1.5, 1.5, 3.5, 5, 0, 3}
+     {-1.5, 1.5, 1.0, 5.0, 0.0, 3.0}
+//     {-1.5, 1.5, 1.0, 3.0, 0.0, 3.0}
+//    ,{-1.5, 1.5, 3.0, 5, 0, 3}
   };
 
   // entry zone used for counting people entering the room
   // z coordinates don't matter
-  static constexpr ZONE_BOUNDARY entryZone = {-1.5, 1.5, 3.5, 5.0, 0.0, 3.0};
+  static constexpr ZONE_BOUNDARY entryZone = {-1.5, 1.5, 2.0, 3.5, 0.0, 3.0};
 
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_product_id_[PRODUCT_BUF_MAX_SIZE + 1];
