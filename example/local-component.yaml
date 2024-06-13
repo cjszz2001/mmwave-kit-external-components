@@ -9,6 +9,8 @@ esp32:
 
 # Enable logging
 logger:
+   logs:
+    ti6432: ERROR
   
 external_components:
   # use all components from a local folder
@@ -26,7 +28,7 @@ ota:
 
 #web_server:
 #  port: 80
-  
+#  log: False
 wifi:
   networks:
   - ssid: !secret wifi_ssid
@@ -72,6 +74,20 @@ text_sensor:
 #      name: "Motion Information"
 #    custom_mode_end:
 #      name: "Custom Mode Status"
+#    product_model:
+#      name: "Product Model"
+#    product_id:
+#      name: "Product ID"
+#    hardware_model:
+#      name: "Hardware Model"
+#    hardware_version:
+#      name: "Hardware Version"
+#    keep_away:
+#      name: "Active Reporting Of Proximity"
+    motion_status:
+      name: "Motion Information"
+#    custom_mode_end:
+#      name: "Custom Mode Status"
 
 #binary_sensor:
 #  - platform: ti6432
@@ -83,6 +99,7 @@ switch:
       id: light_zone1
       name: "human in zone1"
       pin: GPIO6
+    - platform: gpio
       id: light_zone2
       name: "human in zone2"
       pin: GPIO7
@@ -95,6 +112,8 @@ sensor:
 #      name: "Z2 presence"
 #    custom_motion_distance:
 #      name: "Z3 presence"
+    human_entered_in_room:
+      name: "Human Entered into the room"
     custom_spatial_static_value:
       name: "Target ID"
     custom_spatial_motion_value:
@@ -102,7 +121,7 @@ sensor:
     custom_motion_speed:
       name: "Human Count in zone1"
       filters:
-        - debounce: 1s
+        - debounce: 100ms
       on_value_range:
         - above : 0.2
           then:
@@ -114,7 +133,7 @@ sensor:
     custom_mode_num:
       name: "Human Count in zone2"
       filters:
-        - debounce: 1s
+        - debounce: 500ms
       on_value_range:
         - above : 0.2
           then:
