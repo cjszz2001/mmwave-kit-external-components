@@ -206,14 +206,14 @@ class TI6432Component : public Component,
   } ENTRY_COUNT_DATA;
 
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
-     {-1.5, 1.5, 1.0, 5.0, 0.0, 3.0}
+     {-3, 3, 1.0, 5.0, 0.0, 3.0}
 //     {-1.5, 1.5, 1.0, 3.0, 0.0, 3.0}
 //    ,{-1.5, 1.5, 3.0, 5, 0, 3}
   };
 
   // entry zone used for counting people entering the room
   // z coordinates don't matter
-  static constexpr ZONE_BOUNDARY entryZone = {-1.5, 1.5, 2.0, 3.5, 0.0, 3.0};
+  static constexpr ZONE_BOUNDARY entryZone = {-3, 3, 2.0, 3.5, 0.0, 3.0};
 
   char c_product_mode_[PRODUCT_BUF_MAX_SIZE + 1];
   char c_product_id_[PRODUCT_BUF_MAX_SIZE + 1];
