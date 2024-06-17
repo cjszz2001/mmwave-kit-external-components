@@ -52,7 +52,7 @@ static const uint32_t NOT_IN_A_ZONE                  = 0xFFFFFFFF; //
 static const uint32_t TRACKING_TIMEOUT_MS            = 5 * 1000; //
 static const uint32_t INVALID_TIMER_ID               = 0xFFFFFFFF;
 static const uint32_t MMWDEMO_OUTPUT_MSG_MAX         = 1051; // max value of TLV type
-static const float    SENSOR_POS_Z                   = 1.0; 
+static const float    SENSOR_POS_Z                   = 1.6; 
 static const float    MAX_POS_X                      = 4.0; 
 static const float    MIN_POS_X                      = -3.0; 
 static const float    MAX_POS_Y                      = 7.0; 
@@ -206,7 +206,7 @@ class TI6432Component : public Component,
   } ENTRY_COUNT_DATA;
 
   static constexpr ZONE_BOUNDARY zoneBoundary[] = {
-     {-3, 3, 1.0, 5.0, 0.0, 3.0}
+     {-4, 4, 0.0, 7.0, 0.0, 3.0}
 //     {-1.5, 1.5, 1.0, 3.0, 0.0, 3.0}
 //    ,{-1.5, 1.5, 3.0, 5, 0, 3}
   };
