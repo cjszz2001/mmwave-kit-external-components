@@ -158,6 +158,7 @@ void TI6432Component::loop() {
    // Is there data on the serial port
    while (this->available())
    {
+      ESP_LOGD(TAG, "data on UART.");
       switch (this->pos_in_frame)
       {
       case FRAME_IN_IDLE:
@@ -174,14 +175,24 @@ void TI6432Component::loop() {
             {
                current_byte_in_sync_word = 1;
             }
+            else
+            {
+               current_byte_in_sync_word = 0;
+            }
          }
          if (current_byte_in_sync_word == FRAME_MAGIC_WORD_LEN)
          {
             // whole sync word matched, start whole header
-            this->pos_in_frame = FRAME_IN_HEADER;
+            this->pos_in_frame = FRAME_IN_WAIT4HEADER;
+            // this->pos_in_frame = FRAME_IN_HEADER;
             current_byte_in_sync_word = 0;
             ESP_LOGD(TAG, "A new frame found!");
          }
+         else if (current_byte_in_sync_word == 0)
+         {
+            this->pos_in_frame = FRAME_KEEP_IN_IDLE;
+         }
+         ESP_LOGD(TAG, "current_byte_in_sync_word=%d", current_byte_in_sync_word);
       }
       break;
       case FRAME_IN_HEADER:
@@ -254,6 +265,16 @@ void TI6432Component::loop() {
             // UART data is ready
             this->pos_in_frame = FRAME_IN_V;
          }
+         break; // break from while loop
+      }
+      else if (this->pos_in_frame == FRAME_KEEP_IN_IDLE)
+      {
+         this->pos_in_frame = FRAME_IN_IDLE;
+         break; // break from while loop
+      }
+      else if (this->pos_in_frame == FRAME_IN_WAIT4HEADER)
+      {
+         this->pos_in_frame = FRAME_IN_HEADER;
          break; // break from while loop
       }
       else if (this->pos_in_frame == FRAME_IN_WAIT4HANDLE)

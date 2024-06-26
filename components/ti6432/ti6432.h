@@ -62,6 +62,8 @@ static const float    MIN_POS_Z                      = -2.0;
 
 enum {
   FRAME_IN_IDLE,
+  FRAME_KEEP_IN_IDLE,
+  FRAME_IN_WAIT4HEADER,
   FRAME_IN_HEADER,
   FRAME_IN_TL,
   FRAME_IN_WAIT4V,
