@@ -150,7 +150,7 @@ void TI6432Component::update_() {
 // main loop
 void TI6432Component::loop() {
    uint8_t byte;
-   static uint8_t current_byte_in_sync_word = 0;
+   uint8_t current_byte_in_sync_word = 0;
    static uint8_t current_num_tlv = 0;
 
    uint32_t ms_time = millis();
@@ -185,7 +185,6 @@ void TI6432Component::loop() {
             // whole sync word matched, start whole header
             this->pos_in_frame = FRAME_IN_WAIT4HEADER;
             // this->pos_in_frame = FRAME_IN_HEADER;
-            current_byte_in_sync_word = 0;
             ESP_LOGD(TAG, "A new frame found!");
          }
          else if (current_byte_in_sync_word == 0)
@@ -288,7 +287,6 @@ void TI6432Component::loop() {
          ESP_LOGD(TAG, "Reset to prepare for next frame.");
          this->pos_in_frame = FRAME_IN_IDLE;
          current_num_tlv = 0;
-         current_byte_in_sync_word = 0;
          memset(&this->frame_header, 0, sizeof(this->frame_header));
          memset(&this->current_message, 0, sizeof(this->current_message));
          ///this->message_tlv.clear();
